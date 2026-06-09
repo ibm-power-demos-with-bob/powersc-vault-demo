@@ -1,5 +1,12 @@
 # PowerSC + Vault Demo - Git Ignore
 
+# Presentation files (keep local, don't sync)
+presentation/
+*.pptx
+*.ppt
+*.key
+*.pdf
+
 # Node modules
 node_modules/
 ui/node_modules/

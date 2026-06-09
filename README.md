@@ -1,8 +1,21 @@
 # PowerSC + HashiCorp Vault Demo
 
+**Reference Implementation: Pre-Sales Demo Builder Methodology**
+
 ## Overview
 
-This demo showcases the integration of IBM PowerSC Quantum Safety scanning with HashiCorp Vault PKI for automated certificate lifecycle management. Built for Howdens, this demonstration illustrates how to identify weak/old certificates and replace them with modern, short-lived certificates from Vault.
+This demo showcases the integration of IBM PowerSC Quantum Safety scanning with HashiCorp Vault PKI for automated certificate lifecycle management. Built for Howdens using the **Pre-Sales Demo Builder** approach, this demonstration illustrates how to identify weak/old certificates and replace them with modern, short-lived certificates from Vault.
+
+### Demo Builder Principles Applied
+
+This demo follows the Pre-Sales Demo Builder methodology:
+
+✅ **Storytelling & Experience** - Frontend focus with business workflow (certificate vulnerability → remediation)
+✅ **Platform Reality** - Real IBM PowerSC platform demonstrating actual capabilities
+✅ **Industry-Specific** - Tailored for Howdens' SAP/Oracle landscape
+✅ **Credible & Believable** - Uses authentic old certificates, realistic paths, actual weak crypto
+✅ **Outcome-Focused** - Shows before/after improvement, not just features
+✅ **Repeatable** - Fully automated scripts for consistent execution
 
 ## Demo Story
 
@@ -184,12 +197,56 @@ ssh cecuser@129.40.59.194
 - [ ] Certificate lifecycle visualization
 - [ ] Multi-environment support
 
+## About This Demo
+
+### Pre-Sales Demo Builder Reference Implementation
+
+This demo serves as a **reference implementation** of the Pre-Sales Demo Builder methodology. It demonstrates:
+
+- **Mode Selection**: Platform Reality mode (IBM PowerSC as the hero)
+- **Industry Tailoring**: Financial Services/Manufacturing patterns (SAP/Oracle)
+- **Credibility Building**: Real old certificates, authentic weak crypto, realistic paths
+- **Outcome Focus**: Before/after comparison, not feature lists
+- **Automation**: Repeatable scripts for consistent execution
+- **Documentation**: Complete guides for setup, execution, and troubleshooting
+
+### Reusable Patterns
+
+Other Pre-Sales Engineers can adapt this demo for:
+- Different industries (Telco, Healthcare, Retail)
+- Different IBM platforms (Maximo, Instana, Turbonomic)
+- Different use cases (compliance, modernization, automation)
+- Different client scenarios (on-prem, cloud, hybrid)
+
+### Related Resources
+
+- **Pre-Sales Demo Builder Mode**: Custom AI mode for building client demonstrations
+- **Demo Builder Skills**: [`docs/pre-sales-demo-skills.md`](docs/pre-sales-demo-skills.md)
+- **Methodology Guide**: See mode documentation for principles and best practices
+
+## Repository Suggestions
+
+This demo could be part of a larger collection:
+
+```
+ibm-presales-demo-library/
+├── powersc-vault-demo/           # This demo
+├── instana-observability-demo/   # Future: Observability demo
+├── maximo-predictive-maint/      # Future: Asset management demo
+├── turbonomic-optimization/      # Future: Resource optimization demo
+└── demo-builder-templates/       # Reusable templates and patterns
+```
+
 ## Credits
 
-Built with Bob - Pre-Sales Demo Builder
-For Howdens demonstration
-IBM PowerSC + HashiCorp Vault Integration
+**Built with**: Bob - Pre-Sales Demo Builder Mode
+**Client**: Howdens
+**Use Case**: IBM PowerSC + HashiCorp Vault Integration
+**Methodology**: Pre-Sales Demo Builder (Storytelling & Platform Reality)
 
 ## License
 
 Internal IBM demonstration use only.
+Not for production deployment.
+</content>
+<line_count>260</line_count>
