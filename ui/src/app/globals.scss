@@ -1,9 +1,9 @@
 @use '@carbon/react';
 @use '@carbon/react/scss/breakpoint' as *;
 @use '../components/Header/header';
-@use '../app/challenge/challenge-page';
-@use '../app/solution/solution-page';
-@use '../app/results/results-page';
+@use './challenge/challenge-page.module';
+@use './solution/solution-page.module';
+@use './results/results-page.module';
 
 .cds--content {
   margin-top: 3rem;
