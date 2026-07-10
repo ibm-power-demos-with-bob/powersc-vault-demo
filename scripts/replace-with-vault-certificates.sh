@@ -273,6 +273,7 @@ replace_with_vault_cert "/opt/oracle/listener/certs/scan02.pem" "/opt/oracle/lis
 replace_with_vault_cert "/opt/oracle/listener/certs/scan03.pem" "/opt/oracle/listener/certs/scan03-key.pem" "oracle-scan03.howdens.local"
 replace_with_vault_cert "/opt/oracle/listener/certs/vip01.pem" "/opt/oracle/listener/certs/vip01-key.pem" "oracle-vip01.howdens.local"
 replace_with_vault_cert "/opt/oracle/listener/certs/vip02.pem" "/opt/oracle/listener/certs/vip02-key.pem" "oracle-vip02.howdens.local"
+replace_with_vault_cert "/opt/oracle/listener/certs/vip03.pem" "/opt/oracle/listener/certs/vip03-key.pem" "oracle-vip03.howdens.local"
 replace_with_vault_cert "/opt/oracle/listener/certs/grid.pem" "/opt/oracle/listener/certs/grid-key.pem" "oracle-grid.howdens.local"
 replace_with_vault_cert "/opt/oracle/listener/certs/crs.pem" "/opt/oracle/listener/certs/crs-key.pem" "oracle-crs.howdens.local"
 
