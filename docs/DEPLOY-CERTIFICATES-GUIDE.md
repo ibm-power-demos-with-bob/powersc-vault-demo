@@ -4,8 +4,8 @@
 This guide walks through deploying the updated `generate-old-certificates.sh` script that uses real old CA certificates from the system bundle.
 
 ## Prerequisites
-- RHEL system (129.40.59.194) - accessible
-- AIX system (129.40.59.195) - accessible  
+- RHEL system (<VAULT_HOST>) - accessible
+- AIX system (<AIX_HOST>) - accessible  
 - Password: `8-P5VO+NT3UR5!g`
 - Updated `generate-old-certificates.sh` script
 
@@ -18,12 +18,12 @@ From your Windows desktop:
 cd C:\Users\029878866\Desktop
 
 # Transfer directly to AIX (no need to go through RHEL)
-scp generate-old-certificates.sh cecuser@129.40.59.195:/home/cecuser/
+scp generate-old-certificates.sh cecuser@<AIX_HOST>:/home/cecuser/
 
 # Enter password when prompted: 8-P5VO+NT3UR5!g
 ```
 
-**Note**: You can transfer directly from Windows to AIX. The RHEL system (129.40.59.194) is only needed for running Vault, not as an intermediary for file transfers.
+**Note**: You can transfer directly from Windows to AIX. The RHEL system (<VAULT_HOST>) is only needed for running Vault, not as an intermediary for file transfers.
 
 ## Step 2: Prepare AIX System
 
@@ -31,7 +31,7 @@ SSH to AIX:
 
 ```bash
 # From RHEL (or directly from Windows)
-ssh cecuser@129.40.59.195
+ssh cecuser@<AIX_HOST>
 # Password: 8-P5VO+NT3UR5!g
 
 # Verify the CA bundle exists
@@ -226,10 +226,10 @@ After successful certificate deployment:
 
 ```bash
 # Transfer script directly to AIX (from Windows)
-scp generate-old-certificates.sh cecuser@129.40.59.195:/home/cecuser/
+scp generate-old-certificates.sh cecuser@<AIX_HOST>:/home/cecuser/
 
 # SSH to AIX
-ssh cecuser@129.40.59.195
+ssh cecuser@<AIX_HOST>
 
 # Run script (automatically cleans up old certs)
 sudo ./generate-old-certificates.sh
@@ -248,12 +248,12 @@ Windows Desktop (Your PC)
     |
     | SCP direct transfer
     ↓
-AIX Client (129.40.59.195)
+AIX Client (<AIX_HOST>)
     - Runs generate-old-certificates.sh
     - Hosts SAP/Oracle simulated workloads
     - Scanned by PowerSC
     
-RHEL on Power (129.40.59.194)
+RHEL on Power (<VAULT_HOST>)
     - Runs HashiCorp Vault
     - Issues replacement certificates
     - Not needed for initial certificate deployment

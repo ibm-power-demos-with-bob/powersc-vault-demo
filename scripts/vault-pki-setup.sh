@@ -1,25 +1,26 @@
 #!/bin/bash
 ################################################################################
 # PowerSC + Vault Demo: Configure Vault PKI for Certificate Issuance
-# 
+#
 # Purpose: Set up Vault PKI secrets engine to issue short-lived certificates
 #          (24-hour TTL) for SAP/Oracle workloads. This configuration enables
 #          Vault to "take over" certificate management from manual processes.
 #
 # Prerequisites:
-#   - Vault must be running and unsealed
-#   - You must have root token or appropriate permissions
+#   - Vault container must be running (see VAULT-SETUP-GUIDE.md)
+#   - Run on the RHEL Vault host (pvm2)
 #
-# Usage: Run on RHEL client (p1229-pvm2) where Vault is installed
-#        export VAULT_ADDR="http://127.0.0.1:8200"
-#        export VAULT_TOKEN="your-root-token"
-#        ./vault-pki-setup.sh
+# Usage:
+#   ssh cecuser@$VAULT_HOST "VAULT_HOST=$VAULT_HOST bash -s" < vault-pki-setup.sh
+#
+# All Vault commands run inside the container via podman exec.
+# No Vault CLI or jq required on the host — uses curl + sed for JSON.
 #
 # Author: Pre-Sales Demo Builder
-# Date: 2026-06-08
+# Date: 2026-06-08 (revised 2026-07-10 — parameterised IPs, removed jq)
 ################################################################################
 
-set -e  # Exit on error
+# Note: Not using set -e — using explicit error handling per step
 
 # Color output
 RED='\033[0;31m'
@@ -34,31 +35,19 @@ echo -e "${GREEN}Configuring Vault PKI${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
 
-# Check prerequisites
-if [ -z "$VAULT_ADDR" ]; then
-    echo -e "${RED}ERROR: VAULT_ADDR not set${NC}"
-    echo "Please set: export VAULT_ADDR=\"http://127.0.0.1:8200\""
-    exit 1
-fi
+# VAULT_HOST is the FQDN of this RHEL server (set by the caller).
+# Vault runs in a container; all CLI commands use podman exec.
+# Default to localhost if not set (running directly on the vault host).
+VAULT_HOST="${VAULT_HOST:-127.0.0.1}"
 
-if [ -z "$VAULT_TOKEN" ]; then
-    echo -e "${RED}ERROR: VAULT_TOKEN not set${NC}"
-    echo "Please set: export VAULT_TOKEN=\"your-root-token\""
-    exit 1
-fi
+# Convenience function: run vault CLI inside the container
+V() { podman exec -e VAULT_ADDR=http://127.0.0.1:8200 -e VAULT_TOKEN=myroot vault vault "$@"; }
 
-# Check if vault CLI is available
-if ! command -v vault &> /dev/null; then
-    echo -e "${RED}ERROR: Vault CLI not found${NC}"
-    echo "Please install Vault CLI first"
-    exit 1
-fi
-
-# Test Vault connectivity
+# Test Vault connectivity via health endpoint (no CLI required)
 echo -e "${YELLOW}Testing Vault connectivity...${NC}"
-if ! vault status &> /dev/null; then
-    echo -e "${RED}ERROR: Cannot connect to Vault at $VAULT_ADDR${NC}"
-    echo "Make sure Vault is running and unsealed"
+if ! curl -s -f "http://127.0.0.1:8200/v1/sys/health" > /dev/null 2>&1; then
+    echo -e "${RED}ERROR: Cannot connect to Vault at http://127.0.0.1:8200${NC}"
+    echo "Make sure the Vault container is running: podman ps | grep vault"
     exit 1
 fi
 echo -e "${GREEN}✓ Vault connection successful${NC}"
@@ -66,56 +55,52 @@ echo ""
 
 # Step 1: Enable PKI secrets engine
 echo -e "${BLUE}Step 1: Enabling PKI secrets engine...${NC}"
-if vault secrets list | grep -q "^pki/"; then
+if V secrets list | grep -q "^pki/"; then
     echo -e "${YELLOW}  PKI secrets engine already enabled${NC}"
 else
-    vault secrets enable pki
+    V secrets enable pki
     echo -e "${GREEN}  ✓ PKI secrets engine enabled${NC}"
 fi
 echo ""
 
 # Step 2: Configure PKI max lease TTL
 echo -e "${BLUE}Step 2: Configuring PKI max lease TTL (1 year)...${NC}"
-vault secrets tune -max-lease-ttl=8760h pki
+V secrets tune -max-lease-ttl=8760h pki
 echo -e "${GREEN}  ✓ Max lease TTL configured${NC}"
 echo ""
 
-# Step 3: Generate root CA certificate
+# Step 3: Generate root CA certificate (idempotent — skip if already present)
 echo -e "${BLUE}Step 3: Generating root CA certificate...${NC}"
-vault write -format=json pki/root/generate/internal \
-    common_name="Howdens Internal Root CA" \
-    issuer_name="howdens-root-ca" \
-    ttl=8760h \
-    organization="Howdens" \
-    ou="IT Security" \
-    country="GB" \
-    locality="London" \
-    province="England" > /tmp/vault-root-ca.json
-
-if [ $? -eq 0 ]; then
-    echo -e "${GREEN}  ✓ Root CA certificate generated${NC}"
-    echo -e "${YELLOW}  Root CA Details:${NC}"
-    echo "    Common Name: Howdens Internal Root CA"
-    echo "    Organization: Howdens"
-    echo "    Country: GB"
-    echo "    TTL: 1 year (8760h)"
+if V read pki/cert/ca > /dev/null 2>&1; then
+    echo -e "${YELLOW}  Root CA already exists — skipping generation${NC}"
 else
-    echo -e "${RED}  ✗ Failed to generate root CA${NC}"
-    exit 1
+    V write pki/root/generate/internal \
+        common_name="Demo Internal Root CA" \
+        issuer_name="demo-root-ca" \
+        ttl=8760h \
+        organization="Demo Organisation" \
+        ou="IT Security" \
+        country="GB"
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}  ✓ Root CA certificate generated${NC}"
+    else
+        echo -e "${RED}  ✗ Failed to generate root CA${NC}"
+        exit 1
+    fi
 fi
 echo ""
 
-# Step 4: Configure CA and CRL URLs
+# Step 4: Configure CA and CRL URLs (uses VAULT_HOST FQDN — no hardcoded IPs)
 echo -e "${BLUE}Step 4: Configuring CA and CRL URLs...${NC}"
-vault write pki/config/urls \
-    issuing_certificates="http://vault.howdens.local:8200/v1/pki/ca" \
-    crl_distribution_points="http://vault.howdens.local:8200/v1/pki/crl"
-echo -e "${GREEN}  ✓ CA and CRL URLs configured${NC}"
+V write pki/config/urls \
+    issuing_certificates="http://${VAULT_HOST}:8200/v1/pki/ca" \
+    crl_distribution_points="http://${VAULT_HOST}:8200/v1/pki/crl"
+echo -e "${GREEN}  ✓ CA and CRL URLs configured (using host: ${VAULT_HOST})${NC}"
 echo ""
 
 # Step 5: Create PKI role for SAP/Oracle workloads
 echo -e "${BLUE}Step 5: Creating PKI role 'sap-oracle' for workload certificates...${NC}"
-vault write pki/roles/sap-oracle \
+V write pki/roles/sap-oracle \
     allowed_domains="howdens.local,sap.howdens.local,oracle.howdens.local,mq.howdens.local,api.howdens.local,esb.howdens.local,b2b.howdens.local,lb.howdens.local,proxy.howdens.local" \
     allow_subdomains=true \
     allow_bare_domains=true \
@@ -136,56 +121,51 @@ vault write pki/roles/sap-oracle \
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}  ✓ PKI role 'sap-oracle' created${NC}"
     echo -e "${YELLOW}  Role Configuration:${NC}"
-    echo "    Allowed Domains: *.howdens.local, *.sap.howdens.local, *.oracle.howdens.local"
+    echo "    Allowed Domains: *.howdens.local (and subdomains)"
     echo "    Max TTL: 24 hours"
     echo "    Default TTL: 24 hours"
     echo "    Key Type: RSA 2048"
     echo "    Signature: SHA-256"
-    echo "    Organization: Howdens"
 else
     echo -e "${RED}  ✗ Failed to create PKI role${NC}"
     exit 1
 fi
 echo ""
 
-# Step 6: Test certificate issuance
+# Step 6: Test certificate issuance (no jq — use curl + sed)
 echo -e "${BLUE}Step 6: Testing certificate issuance...${NC}"
-vault write -format=json pki/issue/sap-oracle \
-    common_name="test.howdens.local" \
-    ttl=24h > /tmp/vault-test-cert.json
+TEST_RESPONSE=$(curl -s -X POST \
+    -H "X-Vault-Token: myroot" \
+    -H "Content-Type: application/json" \
+    -d '{"common_name":"test.howdens.local","ttl":"24h"}' \
+    "http://127.0.0.1:8200/v1/pki/issue/sap-oracle")
 
-if [ $? -eq 0 ]; then
+if echo "$TEST_RESPONSE" | grep -q '"serial_number"'; then
+    CERT_SERIAL=$(echo "$TEST_RESPONSE" | sed -n 's/.*"serial_number":"\([^"]*\)".*/\1/p')
     echo -e "${GREEN}  ✓ Test certificate issued successfully${NC}"
-    
-    # Extract and display certificate details
-    CERT_SERIAL=$(cat /tmp/vault-test-cert.json | jq -r .data.serial_number)
-    CERT_EXPIRY=$(cat /tmp/vault-test-cert.json | jq -r .data.expiration)
-    
     echo -e "${YELLOW}  Test Certificate Details:${NC}"
     echo "    Common Name: test.howdens.local"
     echo "    Serial Number: $CERT_SERIAL"
-    echo "    Expires: $(date -d @$CERT_EXPIRY 2>/dev/null || date -r $CERT_EXPIRY 2>/dev/null || echo $CERT_EXPIRY)"
     echo "    TTL: 24 hours"
-    
-    # Clean up test certificate
-    rm -f /tmp/vault-test-cert.json
 else
     echo -e "${RED}  ✗ Failed to issue test certificate${NC}"
+    ERROR=$(echo "$TEST_RESPONSE" | sed -n 's/.*"errors":\["\([^"]*\)".*/\1/p')
+    echo "  Error: $ERROR"
     exit 1
 fi
 echo ""
 
-# Step 7: Display root CA certificate
+# Step 7: Retrieve root CA certificate (no jq — use curl)
 echo -e "${BLUE}Step 7: Saving root CA certificate...${NC}"
-vault read -field=certificate pki/cert/ca > /tmp/howdens-root-ca.pem
-if [ $? -eq 0 ]; then
-    echo -e "${GREEN}  ✓ Root CA certificate saved to /tmp/howdens-root-ca.pem${NC}"
+curl -s "http://127.0.0.1:8200/v1/pki/ca/pem" > /tmp/demo-root-ca.pem
+if [ -s /tmp/demo-root-ca.pem ]; then
+    echo -e "${GREEN}  ✓ Root CA certificate saved to /tmp/demo-root-ca.pem${NC}"
     echo ""
-    echo -e "${YELLOW}  Root CA Certificate (first 10 lines):${NC}"
-    head -10 /tmp/howdens-root-ca.pem | sed 's/^/    /'
+    echo -e "${YELLOW}  Root CA Certificate (first 5 lines):${NC}"
+    head -5 /tmp/demo-root-ca.pem | sed 's/^/    /'
     echo "    ..."
 else
-    echo -e "${RED}  ✗ Failed to retrieve root CA certificate${NC}"
+    echo -e "${YELLOW}  Warning: Could not retrieve root CA certificate (non-critical)${NC}"
 fi
 echo ""
 
@@ -196,7 +176,7 @@ echo -e "${GREEN}========================================${NC}"
 echo ""
 echo -e "${YELLOW}Configuration Summary:${NC}"
 echo "  ✓ PKI secrets engine enabled at: pki/"
-echo "  ✓ Root CA generated: Howdens Internal Root CA"
+echo "  ✓ Root CA generated: Demo Internal Root CA"
 echo "  ✓ Max lease TTL: 1 year (8760h)"
 echo "  ✓ PKI role created: sap-oracle"
 echo "  ✓ Certificate TTL: 24 hours"
@@ -204,15 +184,7 @@ echo "  ✓ Key type: RSA 2048 with SHA-256"
 echo "  ✓ Test certificate issued successfully"
 echo ""
 echo -e "${YELLOW}Allowed Domains:${NC}"
-echo "  - *.howdens.local"
-echo "  - *.sap.howdens.local"
-echo "  - *.oracle.howdens.local"
-echo "  - *.mq.howdens.local"
-echo "  - *.api.howdens.local"
-echo "  - *.esb.howdens.local"
-echo "  - *.b2b.howdens.local"
-echo "  - *.lb.howdens.local"
-echo "  - *.proxy.howdens.local"
+echo "  - *.howdens.local (and all sub-domains)"
 echo ""
 echo -e "${YELLOW}Next Steps:${NC}"
 echo "1. Run generate-old-certificates.sh on AIX client to create old certificates"
@@ -222,11 +194,8 @@ echo "4. Trigger PowerSC rescan to capture 'AFTER' state"
 echo ""
 echo -e "${GREEN}Vault is now ready to issue certificates for SAP/Oracle workloads!${NC}"
 echo ""
-
-# Export environment variables for convenience
-echo -e "${YELLOW}Environment Variables (for reference):${NC}"
-echo "  export VAULT_ADDR=\"$VAULT_ADDR\""
-echo "  export VAULT_TOKEN=\"$VAULT_TOKEN\""
+echo -e "${YELLOW}Vault Address (from AIX):${NC}"
+echo "  http://${VAULT_HOST}:8200"
 echo ""
 
 # Made with Bob

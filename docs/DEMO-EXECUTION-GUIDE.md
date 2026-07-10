@@ -25,7 +25,7 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ PowerSC Server (p1229-pvm1) - 129.40.59.193               │
+│ PowerSC Server (p1229-pvm1) - <POWERSC_HOST>               │
 │ - PowerSC UI (port 8443)                                   │
 │ - Quantum Inventory Report                                 │
 │ - Monitors all agents                                      │
@@ -54,7 +54,7 @@
 **Steps:**
 1. Open browser (Chrome/Firefox recommended)
 2. Navigate to: `https://p1229-pvm1.p1229.cecc.ihost.com` (no port needed)
-   - Alternative: `https://129.40.59.193` (if hostname doesn't resolve)
+   - Alternative: `https://<POWERSC_HOST>` (if hostname doesn't resolve)
 3. Login with admin credentials:
    - **Username:** `powersc-admin`
    - **Password:** (from TechZone reservation)
@@ -74,14 +74,14 @@
    - **Endpoints** tab (initially shows "No systems have been added")
    - **Keystore Requests** tab
 3. Click the **Keystore Requests** tab
-4. Select **p1229-pvm3** (AIX client at 129.40.59.195)
+4. Select **p1229-pvm3** (AIX client at <AIX_HOST>)
 5. Click **Generate Keystore** button
 6. Wait for keystore generation to complete (status changes to "yes")
 7. Return to the **Endpoints** tab
 8. Wait 2-5 minutes for endpoint registration
 9. Verify AIX client (p1229-pvm3) now appears in the table with:
    - System Name
-   - IP Address (129.40.59.195)
+   - IP Address (<AIX_HOST>)
    - User Group
    - Verified Timestamp
    - Connectivity Diagnosis
@@ -149,7 +149,7 @@
 ### PHASE 2: Introduce the Solution (3 minutes)
 
 #### 2.1 Switch to Vault UI
-- URL: `http://129.40.59.194:8200`
+- URL: `http://<VAULT_HOST>:8200`
 - Show Vault dashboard
 
 **Talking Points:**
@@ -161,7 +161,7 @@
 #### 2.2 Show Vault PKI Configuration
 ```bash
 # SSH to RHEL client
-ssh cecuser@129.40.59.194
+ssh cecuser@<VAULT_HOST>
 
 # Show PKI configuration
 vault read pki/roles/sap-oracle
@@ -204,7 +204,7 @@ vault write pki/issue/sap-oracle \
 #### 3.2 Deploy to AIX Client
 ```bash
 # SSH to AIX client
-ssh cecuser@129.40.59.195
+ssh cecuser@<AIX_HOST>
 
 # Deploy certificates (simulate SAP/Oracle paths)
 sudo cp vault-cert.pem /etc/security/certs/sap-app.pem
@@ -229,7 +229,7 @@ sudo chmod 600 /etc/security/certs/sap-app-key.pem
 
 **Option B - Via CLI:**
 ```bash
-ssh cecuser@129.40.59.193
+ssh cecuser@<POWERSC_HOST>
 powersc scan --target p1229-pvm3 --type certificates
 ```
 
@@ -340,7 +340,7 @@ powersc scan --target p1229-pvm3 --type certificates
 
 ### PowerSC UI Won't Load
 ```bash
-ssh cecuser@129.40.59.193
+ssh cecuser@<POWERSC_HOST>
 sudo systemctl status powersc
 # or for AIX-based PowerSC:
 sudo lssrc -g powersc
@@ -348,14 +348,14 @@ sudo lssrc -g powersc
 
 ### AIX Agent Not Showing
 ```bash
-ssh cecuser@129.40.59.195
+ssh cecuser@<AIX_HOST>
 lssrc -s powersc_agent
 cat /var/log/powersc/agent.log
 ```
 
 ### Vault Not Accessible
 ```bash
-ssh cecuser@129.40.59.194
+ssh cecuser@<VAULT_HOST>
 vault status
 systemctl status vault
 ```
@@ -371,8 +371,8 @@ systemctl status vault
 ## 📚 Reference Information
 
 ### URLs
-- PowerSC UI: `https://129.40.59.193:8443`
-- Vault UI: `http://129.40.59.194:8200`
+- PowerSC UI: `https://<POWERSC_HOST>:8443`
+- Vault UI: `http://<VAULT_HOST>:8200`
 
 ### Credentials
 - PowerSC: `powersc` / (TechZone password)

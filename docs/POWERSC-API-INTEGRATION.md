@@ -24,8 +24,8 @@ This guide explains how to integrate PowerSC Quantum Safety scanning into the Ho
 **Usage**:
 ```bash
 # On AIX client (p1229-pvm3)
-scp configure-powersc-scan.sh cecuser@129.40.59.195:/home/cecuser/
-ssh cecuser@129.40.59.195
+scp configure-powersc-scan.sh cecuser@<AIX_HOST>:/home/cecuser/
+ssh cecuser@<AIX_HOST>
 sudo ./configure-powersc-scan.sh
 ```
 

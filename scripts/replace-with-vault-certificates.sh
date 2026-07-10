@@ -12,15 +12,16 @@
 #   - Old certificates must exist (run generate-old-certificates.sh first)
 #
 # Usage: Run on AIX client (p1229-pvm3) with Vault access
-#        export VAULT_ADDR="http://129.40.59.194:8200"
+#        export VAULT_ADDR="http://<VAULT_HOST>:8200"
 #        export VAULT_TOKEN="your-vault-token"
 #        ./replace-with-vault-certificates.sh
 #
 # Author: Pre-Sales Demo Builder
-# Date: 2026-06-08
+# Date: 2026-06-09
 ################################################################################
 
-set -e  # Exit on error
+# Note: Not using 'set -e' to allow graceful error handling
+# This ensures the script continues even if individual certificate issuance fails
 
 # Color output
 RED='\033[0;31m'
@@ -38,7 +39,7 @@ echo ""
 # Check prerequisites
 if [ -z "$VAULT_ADDR" ]; then
     echo -e "${RED}ERROR: VAULT_ADDR not set${NC}"
-    echo "Please set: export VAULT_ADDR=\"http://129.40.59.194:8200\""
+    echo "Please set: export VAULT_ADDR=\"http://<VAULT_HOST>:8200\""
     exit 1
 fi
 
@@ -48,16 +49,18 @@ if [ -z "$VAULT_TOKEN" ]; then
     exit 1
 fi
 
-# Check if vault CLI is available
-if ! command -v vault &> /dev/null; then
-    echo -e "${RED}ERROR: Vault CLI not found${NC}"
-    echo "Please install Vault CLI first"
+# Check if curl is available (more universal than vault CLI)
+if ! command -v curl &> /dev/null; then
+    echo -e "${RED}ERROR: curl not found${NC}"
+    echo "Please install curl first"
     exit 1
 fi
 
-# Test Vault connectivity
+# Note: We use grep/sed/awk for JSON parsing instead of jq for better AIX compatibility
+
+# Test Vault connectivity using curl
 echo -e "${YELLOW}Testing Vault connectivity...${NC}"
-if ! vault status &> /dev/null; then
+if ! curl -s -f "$VAULT_ADDR/v1/sys/health" > /dev/null 2>&1; then
     echo -e "${RED}ERROR: Cannot connect to Vault at $VAULT_ADDR${NC}"
     exit 1
 fi
@@ -67,32 +70,67 @@ echo ""
 # Counter for certificates replaced
 CERT_COUNT=0
 
-# Function to issue and deploy a Vault certificate
+# Function to issue and deploy a Vault certificate using curl
 replace_with_vault_cert() {
     local cert_path=$1
     local key_path=$2
     local common_name=$3
     
-    # Issue certificate from Vault (24-hour TTL, strong crypto)
-    local vault_output=$(vault write -format=json pki/issue/sap-oracle \
-        common_name="$common_name" \
-        ttl=24h 2>/dev/null)
+    # Issue certificate from Vault using curl (24-hour TTL, strong crypto)
+    local vault_output=$(curl -s -X POST \
+        -H "X-Vault-Token: $VAULT_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d "{\"common_name\":\"$common_name\",\"ttl\":\"24h\"}" \
+        "$VAULT_ADDR/v1/pki/issue/sap-oracle" 2>/dev/null)
     
-    if [ $? -ne 0 ]; then
-        echo -e "${RED}  ✗ Failed to issue certificate for $common_name${NC}"
+    local curl_exit_code=$?
+    
+    if [ $curl_exit_code -ne 0 ]; then
+        echo -e "${RED}  ✗ Failed to issue certificate for $common_name (curl exit code: $curl_exit_code)${NC}"
+        # Create empty files so the script can continue
+        touch "$cert_path" "$key_path" 2>/dev/null || true
         return 1
     fi
     
-    # Extract certificate and key from JSON response
-    echo "$vault_output" | jq -r .data.certificate > "$cert_path"
-    echo "$vault_output" | jq -r .data.private_key > "$key_path"
+    # Check if Vault returned an error (look for "errors" field in JSON)
+    if echo "$vault_output" | grep -q '"errors"'; then
+        local error_msg=$(echo "$vault_output" | sed -n 's/.*"errors":\["\([^"]*\)".*/\1/p')
+        echo -e "${RED}  ✗ Vault error for $common_name: $error_msg${NC}"
+        touch "$cert_path" "$key_path" 2>/dev/null || true
+        return 1
+    fi
+    
+    # Extract certificate from JSON using sed (AIX-compatible, no grep -o)
+    # Look for "certificate":"-----BEGIN CERTIFICATE-----...-----END CERTIFICATE-----"
+    local cert_data=$(echo "$vault_output" | sed -n 's/.*"certificate":"\([^"]*\)".*/\1/p' | sed 's/\\n/\n/g')
+    
+    if [ -z "$cert_data" ]; then
+        echo -e "${RED}  ✗ Failed to extract certificate for $common_name${NC}"
+        touch "$cert_path" "$key_path" 2>/dev/null || true
+        return 1
+    fi
+    
+    echo "$cert_data" > "$cert_path"
+    
+    # Extract private key from JSON using sed (AIX-compatible)
+    # Look for "private_key":"-----BEGIN RSA PRIVATE KEY-----...-----END RSA PRIVATE KEY-----"
+    local key_data=$(echo "$vault_output" | sed -n 's/.*"private_key":"\([^"]*\)".*/\1/p' | sed 's/\\n/\n/g')
+    
+    if [ -z "$key_data" ]; then
+        echo -e "${RED}  ✗ Failed to extract private key for $common_name${NC}"
+        touch "$key_path" 2>/dev/null || true
+        return 1
+    fi
+    
+    echo "$key_data" > "$key_path"
     
     # Set proper permissions
-    chmod 644 "$cert_path"
-    chmod 600 "$key_path"
+    chmod 644 "$cert_path" 2>/dev/null || true
+    chmod 600 "$key_path" 2>/dev/null || true
     
     ((CERT_COUNT++))
     echo -e "${GREEN}  ✓ Replaced: $common_name${NC}"
+    return 0
 }
 
 echo -e "${BLUE}Replacing SAP Application Layer Certificates (60 certs)...${NC}"

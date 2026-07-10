@@ -10,10 +10,10 @@ Transfer files directly instead of copy/paste:
 
 ```bash
 # From Windows to RHEL
-scp generate-old-certificates.sh cecuser@129.40.59.194:/home/cecuser/
+scp generate-old-certificates.sh cecuser@<VAULT_HOST>:/home/cecuser/
 
 # From RHEL to AIX
-scp generate-old-certificates.sh cecuser@129.40.59.195:/home/cecuser/
+scp generate-old-certificates.sh cecuser@<AIX_HOST>:/home/cecuser/
 ```
 
 ### Option 2: Use `cat` with Here Document
@@ -69,7 +69,7 @@ base64 -d > generate-old-certificates.sh
 python3 -m http.server 8000
 
 # On AIX, download
-curl http://129.40.59.194:8000/generate-old-certificates.sh -o generate-old-certificates.sh
+curl http://<VAULT_HOST>:8000/generate-old-certificates.sh -o generate-old-certificates.sh
 ```
 
 ## Best Practice for This Demo
@@ -88,10 +88,10 @@ Some terminal emulators work better than others:
 8-P5VO+NT3UR5!g
 
 # RHEL IP
-129.40.59.194
+<VAULT_HOST>
 
 # AIX IP  
-129.40.59.195
+<AIX_HOST>
 
 # Transfer script
-scp generate-old-certificates.sh cecuser@129.40.59.195:/home/cecuser/
+scp generate-old-certificates.sh cecuser@<AIX_HOST>:/home/cecuser/

@@ -28,11 +28,11 @@ This demo follows the Pre-Sales Demo Builder methodology:
 ```
 Windows Desktop (Demo Control)
     |
-    ├─> RHEL on IBM Power (129.40.59.194)
+    ├─> RHEL on IBM Power (<VAULT_HOST>)
     |   └─> HashiCorp Vault
     |       └─> PKI Engine (24-hour certificates)
     |
-    └─> AIX Client (129.40.59.195)
+    └─> AIX Client (<AIX_HOST>)
         ├─> SAP Applications (60 certificates)
         ├─> Oracle Databases (50 certificates)
         ├─> Integration/Middleware (30 certificates)
@@ -54,9 +54,12 @@ powersc-vault-demo/
 │   ├── DEPLOY-CERTIFICATES-GUIDE.md  # Certificate deployment details
 │   ├── POWERSC-API-INTEGRATION.md    # PowerSC REST API integration
 │   ├── AIX-TERMINAL-TIPS.md          # AIX terminal troubleshooting
+│   ├── AIX-SCRIPTING-BEST-PRACTICES.md # AIX scripting guidelines (curl, no jq)
+│   ├── QUICK-START-VAULT-REPLACEMENT.md # Quick guide for certificate replacement
+│   ├── SCRIPT-UPDATES-2026-06-09.md  # Recent script improvements
 │   ├── DEMO-UI-IMPLEMENTATION-PLAN.md # UI development plan
 │   ├── powersc-ui-checklist.md       # UI feature checklist
-│   ├── pre-sales-demo-skills.md      # Pre-sales demo best practices
+│   ├── ibm-power-pre-sales-demo-skills.md # IBM Power demo best practices
 │   └── hashicorp-vault-powersc-demo-plan.md # Original demo plan
 ├── scripts/                           # Automation scripts
 │   ├── generate-old-certificates.sh  # Deploy 150 old certificates
@@ -85,10 +88,10 @@ powersc-vault-demo/
 
 ```bash
 # Transfer script to AIX
-scp scripts/generate-old-certificates.sh cecuser@129.40.59.195:/home/cecuser/
+scp scripts/generate-old-certificates.sh cecuser@<AIX_HOST>:/home/cecuser/
 
 # SSH to AIX and run
-ssh cecuser@129.40.59.195
+ssh cecuser@<AIX_HOST>
 sudo ./generate-old-certificates.sh
 ```
 
@@ -105,10 +108,10 @@ sudo ./generate-old-certificates.sh
 
 ```bash
 # Transfer script to RHEL
-scp scripts/vault-pki-setup.sh cecuser@129.40.59.194:/home/cecuser/
+scp scripts/vault-pki-setup.sh cecuser@<VAULT_HOST>:/home/cecuser/
 
 # SSH to RHEL and run
-ssh cecuser@129.40.59.194
+ssh cecuser@<VAULT_HOST>
 ./vault-pki-setup.sh
 ```
 
@@ -152,13 +155,13 @@ ssh cecuser@129.40.59.194
 ## Environment Details
 
 ### RHEL on IBM Power (Vault Server)
-- **IP**: 129.40.59.194
+- **IP**: <VAULT_HOST>
 - **Hostname**: p1229-pvm2
 - **User**: cecuser
 - **Role**: HashiCorp Vault PKI
 
 ### AIX Client (Certificate Host)
-- **IP**: 129.40.59.195
+- **IP**: <AIX_HOST>
 - **Hostname**: p1229-pvm3
 - **User**: cecuser
 - **Role**: SAP/Oracle workload simulation

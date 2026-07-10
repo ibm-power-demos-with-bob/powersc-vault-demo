@@ -16,7 +16,7 @@ This guide provides step-by-step instructions for deploying the demo to your IBM
                            │ SCP Transfer
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ RHEL Client (p1229-pvm2) - 129.40.59.194                   │
+│ RHEL Client (p1229-pvm2) - <VAULT_HOST>                   │
 │ - Vault server (port 8200)                                  │
 │ - Demo UI (port 3001)                                       │
 │ - Backend API (port 3002)                                   │
@@ -27,7 +27,7 @@ This guide provides step-by-step instructions for deploying the demo to your IBM
                            │ SSH to AIX
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ AIX Client (p1229-pvm3) - 129.40.59.195                    │
+│ AIX Client (p1229-pvm3) - <AIX_HOST>                    │
 │ - Target system for certificates                            │
 │ - generate-old-certificates.sh                              │
 │ - Certificate directories (/opt/sap, /opt/oracle, etc.)    │
@@ -96,17 +96,17 @@ DEMO-UI-IMPLEMENTATION-PLAN.md
 
 ```powershell
 # Transfer deployment package to RHEL client
-scp -r powersc-vault-demo-deploy cecuser@129.40.59.194:/home/cecuser/
+scp -r powersc-vault-demo-deploy cecuser@<VAULT_HOST>:/home/cecuser/
 
 # Verify transfer
-ssh cecuser@129.40.59.194 "ls -la /home/cecuser/powersc-vault-demo-deploy"
+ssh cecuser@<VAULT_HOST> "ls -la /home/cecuser/powersc-vault-demo-deploy"
 ```
 
 ### Step 3: Deploy on RHEL Client
 
 ```bash
 # SSH to RHEL client
-ssh cecuser@129.40.59.194
+ssh cecuser@<VAULT_HOST>
 
 # Navigate to deployment directory
 cd /home/cecuser/powersc-vault-demo-deploy
@@ -140,7 +140,7 @@ The deployment script will:
 
 1. Click **Endpoint Admin** in top navigation
 2. Click **Keystore Requests** tab
-3. Select **p1229-pvm3** (AIX client at 129.40.59.195)
+3. Select **p1229-pvm3** (AIX client at <AIX_HOST>)
 4. Click **Generate Keystore** button
 5. Wait for status to change to "yes"
 6. Click **Endpoints** tab
@@ -182,10 +182,10 @@ vault status
 node --version  # Should be 18+
 
 # Check SSH to AIX works
-ssh cecuser@129.40.59.195 "hostname"  # Should return p1229-pvm3
+ssh cecuser@<AIX_HOST> "hostname"  # Should return p1229-pvm3
 
 # Check AIX scripts are in place
-ssh cecuser@129.40.59.195 "ls -la /home/cecuser/demo-scripts/"
+ssh cecuser@<AIX_HOST> "ls -la /home/cecuser/demo-scripts/"
 ```
 
 ## File Transfer Details
@@ -220,22 +220,22 @@ demo-scripts/
 
 ```bash
 # From Windows PowerShell to RHEL
-scp generate-old-certificates.sh cecuser@129.40.59.194:/home/cecuser/
+scp generate-old-certificates.sh cecuser@<VAULT_HOST>:/home/cecuser/
 
 # From RHEL to AIX
-ssh cecuser@129.40.59.194
-scp generate-old-certificates.sh cecuser@129.40.59.195:/home/cecuser/demo-scripts/
+ssh cecuser@<VAULT_HOST>
+scp generate-old-certificates.sh cecuser@<AIX_HOST>:/home/cecuser/demo-scripts/
 ```
 
 ### Transfer Entire Directory
 
 ```bash
 # From Windows to RHEL (recursive)
-scp -r powersc-vault-demo-deploy cecuser@129.40.59.194:/home/cecuser/
+scp -r powersc-vault-demo-deploy cecuser@<VAULT_HOST>:/home/cecuser/
 
 # From RHEL to AIX (recursive)
-ssh cecuser@129.40.59.194
-scp -r /home/cecuser/powersc-vault-demo/scripts/* cecuser@129.40.59.195:/home/cecuser/demo-scripts/
+ssh cecuser@<VAULT_HOST>
+scp -r /home/cecuser/powersc-vault-demo/scripts/* cecuser@<AIX_HOST>:/home/cecuser/demo-scripts/
 ```
 
 ## Environment Configuration
@@ -244,12 +244,12 @@ scp -r /home/cecuser/powersc-vault-demo/scripts/* cecuser@129.40.59.195:/home/ce
 
 ```bash
 # SSH to RHEL client
-ssh cecuser@129.40.59.194
+ssh cecuser@<VAULT_HOST>
 
 # Create environment file
 cat > /home/cecuser/powersc-vault-demo/.env << 'EOF'
 # AIX Client Configuration
-AIX_HOST=129.40.59.195
+AIX_HOST=<AIX_HOST>
 AIX_USER=cecuser
 AIX_SSH_KEY_PATH=/home/cecuser/.ssh/id_rsa
 AIX_SCRIPTS_PATH=/home/cecuser/demo-scripts
@@ -315,10 +315,10 @@ sudo firewall-cmd --list-ports
 ssh-keygen -t rsa -b 4096 -f /home/cecuser/.ssh/id_rsa -N ""
 
 # Copy public key to AIX client
-ssh-copy-id cecuser@129.40.59.195
+ssh-copy-id cecuser@<AIX_HOST>
 
 # Test passwordless SSH
-ssh cecuser@129.40.59.195 "hostname"
+ssh cecuser@<AIX_HOST> "hostname"
 ```
 
 ## Troubleshooting
@@ -367,13 +367,13 @@ netstat -tlnp | grep 8200
 **Solution:**
 ```bash
 # Test basic connectivity
-ping 129.40.59.195
+ping <AIX_HOST>
 
 # Check SSH service on AIX
-ssh cecuser@129.40.59.195 "lssrc -s sshd"
+ssh cecuser@<AIX_HOST> "lssrc -s sshd"
 
 # Verify SSH key is authorized
-ssh cecuser@129.40.59.195 "cat ~/.ssh/authorized_keys"
+ssh cecuser@<AIX_HOST> "cat ~/.ssh/authorized_keys"
 ```
 
 ## Quick Reference Commands
@@ -391,14 +391,14 @@ ls -la scripts/
 cat .env | grep -v PASSWORD | grep -v TOKEN
 
 # Check SSH to AIX works
-ssh cecuser@129.40.59.195 "ls -la /home/cecuser/demo-scripts/"
+ssh cecuser@<AIX_HOST> "ls -la /home/cecuser/demo-scripts/"
 ```
 
 ### Manual Script Execution
 
 ```bash
 # On AIX client (generate old certificates)
-ssh cecuser@129.40.59.195
+ssh cecuser@<AIX_HOST>
 cd /home/cecuser/demo-scripts
 sudo ./generate-old-certificates.sh
 
@@ -463,7 +463,7 @@ cd /home/cecuser
 rm -rf powersc-vault-demo
 
 # On AIX client
-ssh cecuser@129.40.59.195
+ssh cecuser@<AIX_HOST>
 rm -rf /home/cecuser/demo-scripts
 sudo rm -rf /opt/sap /opt/oracle /opt/integration /opt/loadbalancer /opt/proxy
 

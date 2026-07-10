@@ -28,7 +28,7 @@ echo ""
 
 # Configuration
 DEMO_HOME="/home/cecuser/powersc-vault-demo"
-AIX_HOST="129.40.59.195"
+AIX_HOST="${AIX_HOST:-<AIX_HOST>}"  # Set AIX_HOST env var to your pvm3 FQDN before running
 AIX_USER="cecuser"
 AIX_SCRIPTS_PATH="/home/cecuser/demo-scripts"
 
@@ -243,7 +243,7 @@ export VAULT_TOKEN="your-vault-token"
 
 ### 2. Generate Old Certificates on AIX
 ```bash
-ssh cecuser@129.40.59.195
+ssh cecuser@$AIX_HOST
 cd /home/cecuser/demo-scripts
 sudo ./generate-old-certificates.sh
 ```
