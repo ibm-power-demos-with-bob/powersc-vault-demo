@@ -1,391 +1,341 @@
-#!/bin/bash
+#!/bin/sh
 ################################################################################
-# PowerSC + Vault Demo: Distribute Real Old Certificates from CA Bundle
-# 
-# Purpose: Extract real certificates from the system CA bundle (2008-2011)
-#          and distribute them across 150 SAP/Oracle/Integration paths.
-#          These certificates have authentic old dates and weak crypto.
+# PowerSC + Vault Demo: Generate Weak Certificates
 #
-# Usage: Run on AIX client (p1229-pvm3) as root or cecuser with sudo
-#        ./generate-old-certificates.sh
+# Purpose: Generate 150 self-signed certificates with deliberately weak crypto
+#          (SHA-1 signature, RSA 1024-bit keys) across SAP/Oracle/Integration
+#          paths on the AIX client. PowerSC classifies these as WEAK based on
+#          algorithm and key size — not certificate age — giving a clear BEFORE
+#          state regardless of issue date.
 #
-# Author: Pre-Sales Demo Builder
-# Date: 2026-06-09
+#          NOTE: Backdating is intentionally NOT used. AIX OpenSSL refuses
+#          past Not Before dates. The weak algorithm + key size is sufficient
+#          for PowerSC to flag these as needing remediation.
+#
+# Usage: Run on AIX client as root or cecuser with sudo
+#        sudo ./generate-old-certificates.sh
+#
+# Author: EMEA AI on IBM Power Squad
+# Date: 2026-07-11
 ################################################################################
-
-# Note: Not using 'set -e' to allow graceful error handling
-# set -e  # Exit on error
 
 # On AIX, toolbox binaries live in /opt/freeware/bin — add to PATH if present
 if [ -d /opt/freeware/bin ]; then
   export PATH="/opt/freeware/bin:$PATH"
 fi
 
-# Color output for better readability
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
-
-echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}PowerSC + Vault Demo Setup${NC}"
-echo -e "${GREEN}Distributing 150 Old Certificates${NC}"
-echo -e "${GREEN}========================================${NC}"
-echo ""
-
-# Check if running as root or with sudo
-if [ "$EUID" -ne 0 ]; then
-    echo -e "${RED}Please run as root or with sudo${NC}"
-    exit 1
+# Check openssl is available
+if ! command -v openssl >/dev/null 2>&1; then
+  echo "ERROR: openssl not found. Install IBM AIX Toolbox OpenSSL."
+  exit 1
 fi
 
-echo -e "${YELLOW}Cleaning up old certificate directories...${NC}"
-
-# Remove old certificate directories if they exist
-if [ -d "/opt/sap" ] || [ -d "/opt/oracle" ] || [ -d "/opt/integration" ] || [ -d "/opt/loadbalancer" ] || [ -d "/opt/proxy" ]; then
-    echo "  Removing existing directories:"
-    [ -d "/opt/sap" ] && echo "    - /opt/sap" && rm -rf /opt/sap
-    [ -d "/opt/oracle" ] && echo "    - /opt/oracle" && rm -rf /opt/oracle
-    [ -d "/opt/integration" ] && echo "    - /opt/integration" && rm -rf /opt/integration
-    [ -d "/opt/loadbalancer" ] && echo "    - /opt/loadbalancer" && rm -rf /opt/loadbalancer
-    [ -d "/opt/proxy" ] && echo "    - /opt/proxy" && rm -rf /opt/proxy
-    echo -e "${GREEN}✓ Cleanup complete${NC}"
-else
-    echo "  No existing certificate directories found"
-fi
-echo ""
-
-# Source CA bundle path
-CA_BUNDLE="/opt/freeware/etc/ssl/certs/extracted/pem/tls-ca-bundle.pem"
-
-# Check if CA bundle exists
-if [ ! -f "$CA_BUNDLE" ]; then
-    echo -e "${RED}CA bundle not found at $CA_BUNDLE${NC}"
-    exit 1
+# Check if running as root
+if [ "$(id -u)" -ne 0 ]; then
+  echo "Please run as root or with sudo"
+  exit 1
 fi
 
-echo -e "${YELLOW}Extracting certificates from CA bundle...${NC}"
-
-# Create temporary directory for extracted certificates
-TEMP_DIR="/tmp/demo-certs-$$"
-mkdir -p "$TEMP_DIR"
-
-# Extract individual certificates from bundle using awk (AIX-compatible)
-# AIX csplit doesn't support {*} syntax, so we use awk instead
-awk '
-BEGIN { cert_num = 0; in_cert = 0 }
-/-----BEGIN CERTIFICATE-----/ {
-    in_cert = 1
-    cert_num++
-    filename = sprintf("'"$TEMP_DIR"'/cert-%03d.pem", cert_num)
-}
-in_cert {
-    print > filename
-}
-/-----END CERTIFICATE-----/ {
-    in_cert = 0
-    close(filename)
-}
-' "$CA_BUNDLE"
-
-# Count extracted certificates
-CERT_FILES=($TEMP_DIR/cert-*.pem)
-NUM_CERTS=${#CERT_FILES[@]}
-
-echo -e "${GREEN}✓ Extracted $NUM_CERTS certificates from bundle${NC}"
+echo "========================================"
+echo "PowerSC + Vault Demo Setup"
+echo "Generating 150 Weak Old Certificates"
+echo "========================================"
 echo ""
 
-# Counter for certificates deployed
+# Clean up existing demo directories
+echo "Cleaning up old certificate directories..."
+for dir in /opt/sap /opt/oracle /opt/integration /opt/loadbalancer /opt/proxy; do
+  if [ -d "$dir" ]; then
+    echo "  Removing $dir"
+    rm -rf "$dir"
+  fi
+done
+echo "Cleanup complete."
+echo ""
+
+# Temporary working directory
+WORK_DIR="/tmp/demo-certs-$$"
+mkdir -p "$WORK_DIR"
+
+# Counter
 CERT_COUNT=0
 
-# Function to deploy a random certificate from the bundle
-deploy_cert() {
-    local cert_path=$1
-    local key_path=$2
-    
-    # Create directory if it doesn't exist
-    mkdir -p "$(dirname "$cert_path")" || {
-        echo -e "${RED}Failed to create directory for $cert_path${NC}"
-        return 1
-    }
-    
-    # Select a random certificate from extracted files
-    local random_index=$((RANDOM % NUM_CERTS))
-    local source_cert="${CERT_FILES[$random_index]}"
-    
-    # Copy certificate
-    if ! cp "$source_cert" "$cert_path" 2>/dev/null; then
-        echo -e "${RED}Failed to copy certificate to $cert_path${NC}"
-        return 1
-    fi
-    
-    # Create a dummy key file (not used in demo, but maintains structure)
-    # Generate a simple RSA 1024 key - suppress output but check for errors
-    if ! openssl genrsa -out "$key_path" 1024 >/dev/null 2>&1; then
-        echo -e "${YELLOW}Warning: Failed to generate key for $key_path, creating dummy key${NC}"
-        # Create a minimal dummy key file if openssl fails
-        echo "-----BEGIN RSA PRIVATE KEY-----" > "$key_path"
-        echo "MIICXAIBAAKBgQC0..." >> "$key_path"
-        echo "-----END RSA PRIVATE KEY-----" >> "$key_path"
-    fi
-    
-    # Set proper permissions
+# -------------------------------------------------------------------
+# generate_weak_cert <cert_path> <key_path> <common_name>
+#
+# Generates a self-signed certificate with:
+#   - RSA 1024-bit key  (weak — below modern 2048-bit standard)
+#   - SHA-1 signature   (weak — deprecated, fails quantum safety checks)
+#
+# PowerSC classifies these as WEAK on both algorithm and key size grounds.
+# No backdating — AIX OpenSSL refuses past Not Before dates and it is not
+# needed: algorithm + key size alone triggers the WEAK classification.
+# -------------------------------------------------------------------
+generate_weak_cert() {
+  cert_path="$1"
+  key_path="$2"
+  cn="$3"
+
+  # Create parent directory
+  mkdir -p "$(dirname "$cert_path")" 2>/dev/null || true
+
+  # Build a minimal openssl config — avoids interactive prompts on AIX
+  cfg="$WORK_DIR/cert-$$.cnf"
+  cat > "$cfg" << SSLCFG
+[req]
+default_bits       = 1024
+default_md         = sha1
+prompt             = no
+distinguished_name = dn
+[dn]
+CN=$cn
+O=Demo Organisation
+OU=IT Security
+C=GB
+SSLCFG
+
+  # Generate RSA 1024 key
+  openssl genrsa -out "$key_path" 1024 >/dev/null 2>&1
+
+  # Self-signed cert with SHA-1 — current date, 10 year validity
+  openssl req -new -x509 \
+    -key "$key_path" \
+    -out "$cert_path" \
+    -config "$cfg" \
+    -sha1 \
+    -days 3650 \
+    -set_serial "$CERT_COUNT" \
+    >/dev/null 2>&1
+
+  rm -f "$cfg"
+
+  # Verify it was created
+  if [ -f "$cert_path" ] && [ -s "$cert_path" ]; then
     chmod 644 "$cert_path" 2>/dev/null || true
-    chmod 600 "$key_path" 2>/dev/null || true
-    
-    ((CERT_COUNT++))
+    chmod 600 "$key_path"  2>/dev/null || true
+    CERT_COUNT=$((CERT_COUNT + 1))
     return 0
+  else
+    echo "  WARNING: Failed to generate $cert_path"
+    return 1
+  fi
 }
 
-echo -e "${YELLOW}Deploying SAP Application Layer Certificates (60 certs)...${NC}"
+echo "Generating SAP Application Layer Certificates (60 certs)..."
 
-# SAP Production App Server 1 (10 certs)
-echo "  Creating SAP App Server 1 certificates..."
-deploy_cert "/opt/sap/app01/certs/server.pem" "/opt/sap/app01/certs/server-key.pem"
-deploy_cert "/opt/sap/app01/certs/client.pem" "/opt/sap/app01/certs/client-key.pem"
-deploy_cert "/opt/sap/app01/certs/icm.pem" "/opt/sap/app01/certs/icm-key.pem"
-deploy_cert "/opt/sap/app01/certs/gateway.pem" "/opt/sap/app01/certs/gateway-key.pem"
-deploy_cert "/opt/sap/app01/certs/rfc.pem" "/opt/sap/app01/certs/rfc-key.pem"
-deploy_cert "/opt/sap/app01/certs/message-server.pem" "/opt/sap/app01/certs/message-server-key.pem"
-deploy_cert "/opt/sap/app01/certs/enqueue.pem" "/opt/sap/app01/certs/enqueue-key.pem"
-deploy_cert "/opt/sap/app01/certs/web.pem" "/opt/sap/app01/certs/web-key.pem"
-deploy_cert "/opt/sap/app01/certs/fiori.pem" "/opt/sap/app01/certs/fiori-key.pem"
-deploy_cert "/opt/sap/app01/certs/sso.pem" "/opt/sap/app01/certs/sso-key.pem"
+# SAP App Server 1 (10 certs)
+echo "  SAP App Server 1..."
+generate_weak_cert "/opt/sap/app01/certs/server.pem"         "/opt/sap/app01/certs/server-key.pem"         "sap-app01.howdens.local"         
+generate_weak_cert "/opt/sap/app01/certs/client.pem"         "/opt/sap/app01/certs/client-key.pem"         "sap-client01.howdens.local"      
+generate_weak_cert "/opt/sap/app01/certs/icm.pem"            "/opt/sap/app01/certs/icm-key.pem"            "icm.sap.howdens.local"           
+generate_weak_cert "/opt/sap/app01/certs/gateway.pem"        "/opt/sap/app01/certs/gateway-key.pem"        "gateway.sap.howdens.local"       
+generate_weak_cert "/opt/sap/app01/certs/rfc.pem"            "/opt/sap/app01/certs/rfc-key.pem"            "rfc.sap.howdens.local"           
+generate_weak_cert "/opt/sap/app01/certs/message-server.pem" "/opt/sap/app01/certs/message-server-key.pem" "ms.sap.howdens.local"            
+generate_weak_cert "/opt/sap/app01/certs/enqueue.pem"        "/opt/sap/app01/certs/enqueue-key.pem"        "enqueue.sap.howdens.local"       
+generate_weak_cert "/opt/sap/app01/certs/web.pem"            "/opt/sap/app01/certs/web-key.pem"            "web.sap.howdens.local"           
+generate_weak_cert "/opt/sap/app01/certs/fiori.pem"          "/opt/sap/app01/certs/fiori-key.pem"          "fiori.sap.howdens.local"         
+generate_weak_cert "/opt/sap/app01/certs/sso.pem"            "/opt/sap/app01/certs/sso-key.pem"            "sso.sap.howdens.local"           
 
-# SAP Production App Server 2 (10 certs)
-echo "  Creating SAP App Server 2 certificates..."
-deploy_cert "/opt/sap/app02/certs/server.pem" "/opt/sap/app02/certs/server-key.pem"
-deploy_cert "/opt/sap/app02/certs/client.pem" "/opt/sap/app02/certs/client-key.pem"
-deploy_cert "/opt/sap/app02/certs/icm.pem" "/opt/sap/app02/certs/icm-key.pem"
-deploy_cert "/opt/sap/app02/certs/gateway.pem" "/opt/sap/app02/certs/gateway-key.pem"
-deploy_cert "/opt/sap/app02/certs/rfc.pem" "/opt/sap/app02/certs/rfc-key.pem"
-deploy_cert "/opt/sap/app02/certs/message-server.pem" "/opt/sap/app02/certs/message-server-key.pem"
-deploy_cert "/opt/sap/app02/certs/enqueue.pem" "/opt/sap/app02/certs/enqueue-key.pem"
-deploy_cert "/opt/sap/app02/certs/web.pem" "/opt/sap/app02/certs/web-key.pem"
-deploy_cert "/opt/sap/app02/certs/fiori.pem" "/opt/sap/app02/certs/fiori-key.pem"
-deploy_cert "/opt/sap/app02/certs/sso.pem" "/opt/sap/app02/certs/sso-key.pem"
+# SAP App Server 2 (10 certs)
+echo "  SAP App Server 2..."
+generate_weak_cert "/opt/sap/app02/certs/server.pem"         "/opt/sap/app02/certs/server-key.pem"         "sap-app02.howdens.local"         
+generate_weak_cert "/opt/sap/app02/certs/client.pem"         "/opt/sap/app02/certs/client-key.pem"         "sap-client02.howdens.local"      
+generate_weak_cert "/opt/sap/app02/certs/icm.pem"            "/opt/sap/app02/certs/icm-key.pem"            "icm2.sap.howdens.local"          
+generate_weak_cert "/opt/sap/app02/certs/gateway.pem"        "/opt/sap/app02/certs/gateway-key.pem"        "gateway2.sap.howdens.local"      
+generate_weak_cert "/opt/sap/app02/certs/rfc.pem"            "/opt/sap/app02/certs/rfc-key.pem"            "rfc2.sap.howdens.local"          
+generate_weak_cert "/opt/sap/app02/certs/message-server.pem" "/opt/sap/app02/certs/message-server-key.pem" "ms2.sap.howdens.local"           
+generate_weak_cert "/opt/sap/app02/certs/enqueue.pem"        "/opt/sap/app02/certs/enqueue-key.pem"        "enqueue2.sap.howdens.local"      
+generate_weak_cert "/opt/sap/app02/certs/web.pem"            "/opt/sap/app02/certs/web-key.pem"            "web2.sap.howdens.local"          
+generate_weak_cert "/opt/sap/app02/certs/fiori.pem"          "/opt/sap/app02/certs/fiori-key.pem"          "fiori2.sap.howdens.local"        
+generate_weak_cert "/opt/sap/app02/certs/sso.pem"            "/opt/sap/app02/certs/sso-key.pem"            "sso2.sap.howdens.local"          
 
-# SAP Production App Server 3 (10 certs)
-echo "  Creating SAP App Server 3 certificates..."
-deploy_cert "/opt/sap/app03/certs/server.pem" "/opt/sap/app03/certs/server-key.pem"
-deploy_cert "/opt/sap/app03/certs/client.pem" "/opt/sap/app03/certs/client-key.pem"
-deploy_cert "/opt/sap/app03/certs/icm.pem" "/opt/sap/app03/certs/icm-key.pem"
-deploy_cert "/opt/sap/app03/certs/gateway.pem" "/opt/sap/app03/certs/gateway-key.pem"
-deploy_cert "/opt/sap/app03/certs/rfc.pem" "/opt/sap/app03/certs/rfc-key.pem"
-deploy_cert "/opt/sap/app03/certs/message-server.pem" "/opt/sap/app03/certs/message-server-key.pem"
-deploy_cert "/opt/sap/app03/certs/enqueue.pem" "/opt/sap/app03/certs/enqueue-key.pem"
-deploy_cert "/opt/sap/app03/certs/web.pem" "/opt/sap/app03/certs/web-key.pem"
-deploy_cert "/opt/sap/app03/certs/fiori.pem" "/opt/sap/app03/certs/fiori-key.pem"
-deploy_cert "/opt/sap/app03/certs/sso.pem" "/opt/sap/app03/certs/sso-key.pem"
+# SAP App Server 3 (10 certs)
+echo "  SAP App Server 3..."
+generate_weak_cert "/opt/sap/app03/certs/server.pem"         "/opt/sap/app03/certs/server-key.pem"         "sap-app03.howdens.local"         
+generate_weak_cert "/opt/sap/app03/certs/client.pem"         "/opt/sap/app03/certs/client-key.pem"         "sap-client03.howdens.local"      
+generate_weak_cert "/opt/sap/app03/certs/icm.pem"            "/opt/sap/app03/certs/icm-key.pem"            "icm3.sap.howdens.local"          
+generate_weak_cert "/opt/sap/app03/certs/gateway.pem"        "/opt/sap/app03/certs/gateway-key.pem"        "gateway3.sap.howdens.local"      
+generate_weak_cert "/opt/sap/app03/certs/rfc.pem"            "/opt/sap/app03/certs/rfc-key.pem"            "rfc3.sap.howdens.local"          
+generate_weak_cert "/opt/sap/app03/certs/message-server.pem" "/opt/sap/app03/certs/message-server-key.pem" "ms3.sap.howdens.local"           
+generate_weak_cert "/opt/sap/app03/certs/enqueue.pem"        "/opt/sap/app03/certs/enqueue-key.pem"        "enqueue3.sap.howdens.local"      
+generate_weak_cert "/opt/sap/app03/certs/web.pem"            "/opt/sap/app03/certs/web-key.pem"            "web3.sap.howdens.local"          
+generate_weak_cert "/opt/sap/app03/certs/fiori.pem"          "/opt/sap/app03/certs/fiori-key.pem"          "fiori3.sap.howdens.local"        
+generate_weak_cert "/opt/sap/app03/certs/sso.pem"            "/opt/sap/app03/certs/sso-key.pem"            "sso3.sap.howdens.local"          
 
-# SAP Development (8 certs)
-echo "  Creating SAP Development certificates..."
-deploy_cert "/opt/sap/dev/certs/server.pem" "/opt/sap/dev/certs/server-key.pem"
-deploy_cert "/opt/sap/dev/certs/client.pem" "/opt/sap/dev/certs/client-key.pem"
-deploy_cert "/opt/sap/dev/certs/icm.pem" "/opt/sap/dev/certs/icm-key.pem"
-deploy_cert "/opt/sap/dev/certs/gateway.pem" "/opt/sap/dev/certs/gateway-key.pem"
-deploy_cert "/opt/sap/dev/certs/rfc.pem" "/opt/sap/dev/certs/rfc-key.pem"
-deploy_cert "/opt/sap/dev/certs/web.pem" "/opt/sap/dev/certs/web-key.pem"
-deploy_cert "/opt/sap/dev/certs/fiori.pem" "/opt/sap/dev/certs/fiori-key.pem"
-deploy_cert "/opt/sap/dev/certs/sso.pem" "/opt/sap/dev/certs/sso-key.pem"
+# SAP Dev (8 certs)
+echo "  SAP Dev/QA..."
+generate_weak_cert "/opt/sap/dev/certs/server.pem"           "/opt/sap/dev/certs/server-key.pem"           "sap-dev.howdens.local"           
+generate_weak_cert "/opt/sap/dev/certs/client.pem"           "/opt/sap/dev/certs/client-key.pem"           "sap-dev-client.howdens.local"    
+generate_weak_cert "/opt/sap/dev/certs/icm.pem"              "/opt/sap/dev/certs/icm-key.pem"              "icm-dev.sap.howdens.local"       
+generate_weak_cert "/opt/sap/dev/certs/gateway.pem"          "/opt/sap/dev/certs/gateway-key.pem"          "gw-dev.sap.howdens.local"        
+generate_weak_cert "/opt/sap/dev/certs/rfc.pem"              "/opt/sap/dev/certs/rfc-key.pem"              "rfc-dev.sap.howdens.local"       
+generate_weak_cert "/opt/sap/dev/certs/web.pem"              "/opt/sap/dev/certs/web-key.pem"              "web-dev.sap.howdens.local"       
+generate_weak_cert "/opt/sap/dev/certs/fiori.pem"            "/opt/sap/dev/certs/fiori-key.pem"            "fiori-dev.sap.howdens.local"     
+generate_weak_cert "/opt/sap/dev/certs/sso.pem"              "/opt/sap/dev/certs/sso-key.pem"              "sso-dev.sap.howdens.local"       
 
-# SAP QA/Staging (8 certs)
-echo "  Creating SAP QA certificates..."
-deploy_cert "/opt/sap/qas/certs/server.pem" "/opt/sap/qas/certs/server-key.pem"
-deploy_cert "/opt/sap/qas/certs/client.pem" "/opt/sap/qas/certs/client-key.pem"
-deploy_cert "/opt/sap/qas/certs/icm.pem" "/opt/sap/qas/certs/icm-key.pem"
-deploy_cert "/opt/sap/qas/certs/gateway.pem" "/opt/sap/qas/certs/gateway-key.pem"
-deploy_cert "/opt/sap/qas/certs/rfc.pem" "/opt/sap/qas/certs/rfc-key.pem"
-deploy_cert "/opt/sap/qas/certs/web.pem" "/opt/sap/qas/certs/web-key.pem"
-deploy_cert "/opt/sap/qas/certs/fiori.pem" "/opt/sap/qas/certs/fiori-key.pem"
-deploy_cert "/opt/sap/qas/certs/sso.pem" "/opt/sap/qas/certs/sso-key.pem"
+# SAP QAS (8 certs)
+generate_weak_cert "/opt/sap/qas/certs/server.pem"           "/opt/sap/qas/certs/server-key.pem"           "sap-qas.howdens.local"           
+generate_weak_cert "/opt/sap/qas/certs/client.pem"           "/opt/sap/qas/certs/client-key.pem"           "sap-qas-client.howdens.local"    
+generate_weak_cert "/opt/sap/qas/certs/icm.pem"              "/opt/sap/qas/certs/icm-key.pem"              "icm-qas.sap.howdens.local"       
+generate_weak_cert "/opt/sap/qas/certs/gateway.pem"          "/opt/sap/qas/certs/gateway-key.pem"          "gw-qas.sap.howdens.local"        
+generate_weak_cert "/opt/sap/qas/certs/rfc.pem"              "/opt/sap/qas/certs/rfc-key.pem"              "rfc-qas.sap.howdens.local"       
+generate_weak_cert "/opt/sap/qas/certs/web.pem"              "/opt/sap/qas/certs/web-key.pem"              "web-qas.sap.howdens.local"       
+generate_weak_cert "/opt/sap/qas/certs/fiori.pem"            "/opt/sap/qas/certs/fiori-key.pem"            "fiori-qas.sap.howdens.local"     
+generate_weak_cert "/opt/sap/qas/certs/sso.pem"              "/opt/sap/qas/certs/sso-key.pem"              "sso-qas.sap.howdens.local"       
 
 # SAP Web Dispatcher (6 certs)
-echo "  Creating SAP Web Dispatcher certificates..."
-deploy_cert "/opt/sap/webdispatcher/certs/server.pem" "/opt/sap/webdispatcher/certs/server-key.pem"
-deploy_cert "/opt/sap/webdispatcher/certs/backend.pem" "/opt/sap/webdispatcher/certs/backend-key.pem"
-deploy_cert "/opt/sap/webdispatcher/certs/ssl.pem" "/opt/sap/webdispatcher/certs/ssl-key.pem"
-deploy_cert "/opt/sap/webdispatcher/certs/client-auth.pem" "/opt/sap/webdispatcher/certs/client-auth-key.pem"
-deploy_cert "/opt/sap/webdispatcher/certs/admin.pem" "/opt/sap/webdispatcher/certs/admin-key.pem"
-deploy_cert "/opt/sap/webdispatcher/certs/monitoring.pem" "/opt/sap/webdispatcher/certs/monitoring-key.pem"
+echo "  SAP Web Dispatcher / Gateway..."
+generate_weak_cert "/opt/sap/webdispatcher/certs/server.pem"      "/opt/sap/webdispatcher/certs/server-key.pem"      "webdisp.sap.howdens.local"  
+generate_weak_cert "/opt/sap/webdispatcher/certs/backend.pem"     "/opt/sap/webdispatcher/certs/backend-key.pem"     "backend.sap.howdens.local"  
+generate_weak_cert "/opt/sap/webdispatcher/certs/ssl.pem"         "/opt/sap/webdispatcher/certs/ssl-key.pem"         "ssl.sap.howdens.local"      
+generate_weak_cert "/opt/sap/webdispatcher/certs/client-auth.pem" "/opt/sap/webdispatcher/certs/client-auth-key.pem" "auth.sap.howdens.local"     
+generate_weak_cert "/opt/sap/webdispatcher/certs/admin.pem"       "/opt/sap/webdispatcher/certs/admin-key.pem"       "admin.sap.howdens.local"    
+generate_weak_cert "/opt/sap/webdispatcher/certs/monitoring.pem"  "/opt/sap/webdispatcher/certs/monitoring-key.pem"  "monitor.sap.howdens.local"  
 
 # SAP Gateway (8 certs)
-echo "  Creating SAP Gateway certificates..."
-deploy_cert "/opt/sap/gateway/certs/server.pem" "/opt/sap/gateway/certs/server-key.pem"
-deploy_cert "/opt/sap/gateway/certs/odata.pem" "/opt/sap/gateway/certs/odata-key.pem"
-deploy_cert "/opt/sap/gateway/certs/rest.pem" "/opt/sap/gateway/certs/rest-key.pem"
-deploy_cert "/opt/sap/gateway/certs/soap.pem" "/opt/sap/gateway/certs/soap-key.pem"
-deploy_cert "/opt/sap/gateway/certs/mobile.pem" "/opt/sap/gateway/certs/mobile-key.pem"
-deploy_cert "/opt/sap/gateway/certs/b2b.pem" "/opt/sap/gateway/certs/b2b-key.pem"
-deploy_cert "/opt/sap/gateway/certs/edi.pem" "/opt/sap/gateway/certs/edi-key.pem"
-deploy_cert "/opt/sap/gateway/certs/idoc.pem" "/opt/sap/gateway/certs/idoc-key.pem"
+generate_weak_cert "/opt/sap/gateway/certs/server.pem"  "/opt/sap/gateway/certs/server-key.pem"  "gw.sap.howdens.local"   
+generate_weak_cert "/opt/sap/gateway/certs/odata.pem"   "/opt/sap/gateway/certs/odata-key.pem"   "odata.sap.howdens.local"
+generate_weak_cert "/opt/sap/gateway/certs/rest.pem"    "/opt/sap/gateway/certs/rest-key.pem"    "rest.sap.howdens.local" 
+generate_weak_cert "/opt/sap/gateway/certs/soap.pem"    "/opt/sap/gateway/certs/soap-key.pem"    "soap.sap.howdens.local" 
+generate_weak_cert "/opt/sap/gateway/certs/mobile.pem"  "/opt/sap/gateway/certs/mobile-key.pem"  "mob.sap.howdens.local"  
+generate_weak_cert "/opt/sap/gateway/certs/b2b.pem"     "/opt/sap/gateway/certs/b2b-key.pem"     "b2b.sap.howdens.local"  
+generate_weak_cert "/opt/sap/gateway/certs/edi.pem"     "/opt/sap/gateway/certs/edi-key.pem"     "edi.sap.howdens.local"  
+generate_weak_cert "/opt/sap/gateway/certs/idoc.pem"    "/opt/sap/gateway/certs/idoc-key.pem"    "idoc.sap.howdens.local" 
 
 echo ""
-echo -e "${YELLOW}Deploying Oracle Database Layer Certificates (50 certs)...${NC}"
+echo "Generating Oracle Database Layer Certificates (50 certs)..."
 
-# Oracle Production DB 1 (12 certs)
-echo "  Creating Oracle Production DB 1 certificates..."
-deploy_cert "/opt/oracle/prod01/certs/server.pem" "/opt/oracle/prod01/certs/server-key.pem"
-deploy_cert "/opt/oracle/prod01/certs/listener.pem" "/opt/oracle/prod01/certs/listener-key.pem"
-deploy_cert "/opt/oracle/prod01/certs/wallet.pem" "/opt/oracle/prod01/certs/wallet-key.pem"
-deploy_cert "/opt/oracle/prod01/certs/tns.pem" "/opt/oracle/prod01/certs/tns-key.pem"
-deploy_cert "/opt/oracle/prod01/certs/sqlnet.pem" "/opt/oracle/prod01/certs/sqlnet-key.pem"
-deploy_cert "/opt/oracle/prod01/certs/em.pem" "/opt/oracle/prod01/certs/em-key.pem"
-deploy_cert "/opt/oracle/prod01/certs/apex.pem" "/opt/oracle/prod01/certs/apex-key.pem"
-deploy_cert "/opt/oracle/prod01/certs/ords.pem" "/opt/oracle/prod01/certs/ords-key.pem"
-deploy_cert "/opt/oracle/prod01/certs/dataguard.pem" "/opt/oracle/prod01/certs/dataguard-key.pem"
-deploy_cert "/opt/oracle/prod01/certs/rman.pem" "/opt/oracle/prod01/certs/rman-key.pem"
-deploy_cert "/opt/oracle/prod01/certs/goldengate.pem" "/opt/oracle/prod01/certs/goldengate-key.pem"
-deploy_cert "/opt/oracle/prod01/certs/asm.pem" "/opt/oracle/prod01/certs/asm-key.pem"
+echo "  Oracle Prod DB 1..."
+generate_weak_cert "/opt/oracle/prod01/certs/server.pem"     "/opt/oracle/prod01/certs/server-key.pem"     "ora-prod01.howdens.local"    
+generate_weak_cert "/opt/oracle/prod01/certs/listener.pem"   "/opt/oracle/prod01/certs/listener-key.pem"   "listener.ora.howdens.local"  
+generate_weak_cert "/opt/oracle/prod01/certs/wallet.pem"     "/opt/oracle/prod01/certs/wallet-key.pem"     "wallet.ora.howdens.local"    
+generate_weak_cert "/opt/oracle/prod01/certs/tns.pem"        "/opt/oracle/prod01/certs/tns-key.pem"        "tns.ora.howdens.local"       
+generate_weak_cert "/opt/oracle/prod01/certs/sqlnet.pem"     "/opt/oracle/prod01/certs/sqlnet-key.pem"     "sqlnet.ora.howdens.local"    
+generate_weak_cert "/opt/oracle/prod01/certs/em.pem"         "/opt/oracle/prod01/certs/em-key.pem"         "em.ora.howdens.local"        
+generate_weak_cert "/opt/oracle/prod01/certs/apex.pem"       "/opt/oracle/prod01/certs/apex-key.pem"       "apex.ora.howdens.local"      
+generate_weak_cert "/opt/oracle/prod01/certs/ords.pem"       "/opt/oracle/prod01/certs/ords-key.pem"       "ords.ora.howdens.local"      
+generate_weak_cert "/opt/oracle/prod01/certs/dataguard.pem"  "/opt/oracle/prod01/certs/dataguard-key.pem"  "dg.ora.howdens.local"        
+generate_weak_cert "/opt/oracle/prod01/certs/rman.pem"       "/opt/oracle/prod01/certs/rman-key.pem"       "rman.ora.howdens.local"      
+generate_weak_cert "/opt/oracle/prod01/certs/goldengate.pem" "/opt/oracle/prod01/certs/goldengate-key.pem" "gg.ora.howdens.local"        
+generate_weak_cert "/opt/oracle/prod01/certs/asm.pem"        "/opt/oracle/prod01/certs/asm-key.pem"        "asm.ora.howdens.local"       
 
-# Oracle Production DB 2 (12 certs)
-echo "  Creating Oracle Production DB 2 certificates..."
-deploy_cert "/opt/oracle/prod02/certs/server.pem" "/opt/oracle/prod02/certs/server-key.pem"
-deploy_cert "/opt/oracle/prod02/certs/listener.pem" "/opt/oracle/prod02/certs/listener-key.pem"
-deploy_cert "/opt/oracle/prod02/certs/wallet.pem" "/opt/oracle/prod02/certs/wallet-key.pem"
-deploy_cert "/opt/oracle/prod02/certs/tns.pem" "/opt/oracle/prod02/certs/tns-key.pem"
-deploy_cert "/opt/oracle/prod02/certs/sqlnet.pem" "/opt/oracle/prod02/certs/sqlnet-key.pem"
-deploy_cert "/opt/oracle/prod02/certs/em.pem" "/opt/oracle/prod02/certs/em-key.pem"
-deploy_cert "/opt/oracle/prod02/certs/apex.pem" "/opt/oracle/prod02/certs/apex-key.pem"
-deploy_cert "/opt/oracle/prod02/certs/ords.pem" "/opt/oracle/prod02/certs/ords-key.pem"
-deploy_cert "/opt/oracle/prod02/certs/dataguard.pem" "/opt/oracle/prod02/certs/dataguard-key.pem"
-deploy_cert "/opt/oracle/prod02/certs/rman.pem" "/opt/oracle/prod02/certs/rman-key.pem"
-deploy_cert "/opt/oracle/prod02/certs/goldengate.pem" "/opt/oracle/prod02/certs/goldengate-key.pem"
-deploy_cert "/opt/oracle/prod02/certs/asm.pem" "/opt/oracle/prod02/certs/asm-key.pem"
+echo "  Oracle Prod DB 2..."
+generate_weak_cert "/opt/oracle/prod02/certs/server.pem"     "/opt/oracle/prod02/certs/server-key.pem"     "ora-prod02.howdens.local"    
+generate_weak_cert "/opt/oracle/prod02/certs/listener.pem"   "/opt/oracle/prod02/certs/listener-key.pem"   "listener2.ora.howdens.local" 
+generate_weak_cert "/opt/oracle/prod02/certs/wallet.pem"     "/opt/oracle/prod02/certs/wallet-key.pem"     "wallet2.ora.howdens.local"   
+generate_weak_cert "/opt/oracle/prod02/certs/tns.pem"        "/opt/oracle/prod02/certs/tns-key.pem"        "tns2.ora.howdens.local"      
+generate_weak_cert "/opt/oracle/prod02/certs/sqlnet.pem"     "/opt/oracle/prod02/certs/sqlnet-key.pem"     "sqlnet2.ora.howdens.local"   
+generate_weak_cert "/opt/oracle/prod02/certs/em.pem"         "/opt/oracle/prod02/certs/em-key.pem"         "em2.ora.howdens.local"       
+generate_weak_cert "/opt/oracle/prod02/certs/apex.pem"       "/opt/oracle/prod02/certs/apex-key.pem"       "apex2.ora.howdens.local"     
+generate_weak_cert "/opt/oracle/prod02/certs/ords.pem"       "/opt/oracle/prod02/certs/ords-key.pem"       "ords2.ora.howdens.local"     
+generate_weak_cert "/opt/oracle/prod02/certs/dataguard.pem"  "/opt/oracle/prod02/certs/dataguard-key.pem"  "dg2.ora.howdens.local"       
+generate_weak_cert "/opt/oracle/prod02/certs/rman.pem"       "/opt/oracle/prod02/certs/rman-key.pem"       "rman2.ora.howdens.local"     
+generate_weak_cert "/opt/oracle/prod02/certs/goldengate.pem" "/opt/oracle/prod02/certs/goldengate-key.pem" "gg2.ora.howdens.local"       
+generate_weak_cert "/opt/oracle/prod02/certs/asm.pem"        "/opt/oracle/prod02/certs/asm-key.pem"        "asm2.ora.howdens.local"      
 
-# Oracle Development DB (8 certs)
-echo "  Creating Oracle Development DB certificates..."
-deploy_cert "/opt/oracle/dev/certs/server.pem" "/opt/oracle/dev/certs/server-key.pem"
-deploy_cert "/opt/oracle/dev/certs/listener.pem" "/opt/oracle/dev/certs/listener-key.pem"
-deploy_cert "/opt/oracle/dev/certs/wallet.pem" "/opt/oracle/dev/certs/wallet-key.pem"
-deploy_cert "/opt/oracle/dev/certs/tns.pem" "/opt/oracle/dev/certs/tns-key.pem"
-deploy_cert "/opt/oracle/dev/certs/sqlnet.pem" "/opt/oracle/dev/certs/sqlnet-key.pem"
-deploy_cert "/opt/oracle/dev/certs/em.pem" "/opt/oracle/dev/certs/em-key.pem"
-deploy_cert "/opt/oracle/dev/certs/apex.pem" "/opt/oracle/dev/certs/apex-key.pem"
-deploy_cert "/opt/oracle/dev/certs/ords.pem" "/opt/oracle/dev/certs/ords-key.pem"
+echo "  Oracle Dev/QA..."
+generate_weak_cert "/opt/oracle/dev/certs/server.pem"   "/opt/oracle/dev/certs/server-key.pem"   "ora-dev.howdens.local" 
+generate_weak_cert "/opt/oracle/dev/certs/listener.pem" "/opt/oracle/dev/certs/listener-key.pem" "lst-dev.ora.howdens.local"
+generate_weak_cert "/opt/oracle/dev/certs/wallet.pem"   "/opt/oracle/dev/certs/wallet-key.pem"   "wlt-dev.ora.howdens.local"
+generate_weak_cert "/opt/oracle/dev/certs/tns.pem"      "/opt/oracle/dev/certs/tns-key.pem"      "tns-dev.ora.howdens.local"
+generate_weak_cert "/opt/oracle/dev/certs/sqlnet.pem"   "/opt/oracle/dev/certs/sqlnet-key.pem"   "sql-dev.ora.howdens.local"
+generate_weak_cert "/opt/oracle/dev/certs/em.pem"       "/opt/oracle/dev/certs/em-key.pem"       "em-dev.ora.howdens.local" 
+generate_weak_cert "/opt/oracle/dev/certs/apex.pem"     "/opt/oracle/dev/certs/apex-key.pem"     "apex-dev.ora.howdens.local"
+generate_weak_cert "/opt/oracle/dev/certs/ords.pem"     "/opt/oracle/dev/certs/ords-key.pem"     "ords-dev.ora.howdens.local"
+generate_weak_cert "/opt/oracle/qas/certs/server.pem"   "/opt/oracle/qas/certs/server-key.pem"   "ora-qas.howdens.local" 
+generate_weak_cert "/opt/oracle/qas/certs/listener.pem" "/opt/oracle/qas/certs/listener-key.pem" "lst-qas.ora.howdens.local"
+generate_weak_cert "/opt/oracle/qas/certs/wallet.pem"   "/opt/oracle/qas/certs/wallet-key.pem"   "wlt-qas.ora.howdens.local"
+generate_weak_cert "/opt/oracle/qas/certs/tns.pem"      "/opt/oracle/qas/certs/tns-key.pem"      "tns-qas.ora.howdens.local"
+generate_weak_cert "/opt/oracle/qas/certs/sqlnet.pem"   "/opt/oracle/qas/certs/sqlnet-key.pem"   "sql-qas.ora.howdens.local"
+generate_weak_cert "/opt/oracle/qas/certs/em.pem"       "/opt/oracle/qas/certs/em-key.pem"       "em-qas.ora.howdens.local" 
+generate_weak_cert "/opt/oracle/qas/certs/apex.pem"     "/opt/oracle/qas/certs/apex-key.pem"     "apex-qas.ora.howdens.local"
+generate_weak_cert "/opt/oracle/qas/certs/ords.pem"     "/opt/oracle/qas/certs/ords-key.pem"     "ords-qas.ora.howdens.local"
 
-# Oracle QA DB (8 certs)
-echo "  Creating Oracle QA DB certificates..."
-deploy_cert "/opt/oracle/qas/certs/server.pem" "/opt/oracle/qas/certs/server-key.pem"
-deploy_cert "/opt/oracle/qas/certs/listener.pem" "/opt/oracle/qas/certs/listener-key.pem"
-deploy_cert "/opt/oracle/qas/certs/wallet.pem" "/opt/oracle/qas/certs/wallet-key.pem"
-deploy_cert "/opt/oracle/qas/certs/tns.pem" "/opt/oracle/qas/certs/tns-key.pem"
-deploy_cert "/opt/oracle/qas/certs/sqlnet.pem" "/opt/oracle/qas/certs/sqlnet-key.pem"
-deploy_cert "/opt/oracle/qas/certs/em.pem" "/opt/oracle/qas/certs/em-key.pem"
-deploy_cert "/opt/oracle/qas/certs/apex.pem" "/opt/oracle/qas/certs/apex-key.pem"
-deploy_cert "/opt/oracle/qas/certs/ords.pem" "/opt/oracle/qas/certs/ords-key.pem"
-
-# Oracle Listeners (10 certs)
-echo "  Creating Oracle Listener certificates..."
-deploy_cert "/opt/oracle/listener/certs/listener01.pem" "/opt/oracle/listener/certs/listener01-key.pem"
-deploy_cert "/opt/oracle/listener/certs/listener02.pem" "/opt/oracle/listener/certs/listener02-key.pem"
-deploy_cert "/opt/oracle/listener/certs/listener03.pem" "/opt/oracle/listener/certs/listener03-key.pem"
-deploy_cert "/opt/oracle/listener/certs/scan01.pem" "/opt/oracle/listener/certs/scan01-key.pem"
-deploy_cert "/opt/oracle/listener/certs/scan02.pem" "/opt/oracle/listener/certs/scan02-key.pem"
-deploy_cert "/opt/oracle/listener/certs/scan03.pem" "/opt/oracle/listener/certs/scan03-key.pem"
-deploy_cert "/opt/oracle/listener/certs/vip01.pem" "/opt/oracle/listener/certs/vip01-key.pem"
-deploy_cert "/opt/oracle/listener/certs/vip02.pem" "/opt/oracle/listener/certs/vip02-key.pem"
-deploy_cert "/opt/oracle/listener/certs/grid.pem" "/opt/oracle/listener/certs/grid-key.pem"
-deploy_cert "/opt/oracle/listener/certs/crs.pem" "/opt/oracle/listener/certs/crs-key.pem"
+echo "  Oracle Listeners..."
+generate_weak_cert "/opt/oracle/listener/certs/listener01.pem" "/opt/oracle/listener/certs/listener01-key.pem" "lst01.ora.howdens.local"
+generate_weak_cert "/opt/oracle/listener/certs/listener02.pem" "/opt/oracle/listener/certs/listener02-key.pem" "lst02.ora.howdens.local"
+generate_weak_cert "/opt/oracle/listener/certs/scan01.pem"     "/opt/oracle/listener/certs/scan01-key.pem"     "scan01.ora.howdens.local"
+generate_weak_cert "/opt/oracle/listener/certs/scan02.pem"     "/opt/oracle/listener/certs/scan02-key.pem"     "scan02.ora.howdens.local"
+generate_weak_cert "/opt/oracle/listener/certs/vip01.pem"      "/opt/oracle/listener/certs/vip01-key.pem"      "vip01.ora.howdens.local" 
+generate_weak_cert "/opt/oracle/listener/certs/vip02.pem"      "/opt/oracle/listener/certs/vip02-key.pem"      "vip02.ora.howdens.local" 
+generate_weak_cert "/opt/oracle/listener/certs/grid.pem"       "/opt/oracle/listener/certs/grid-key.pem"       "grid.ora.howdens.local"  
+generate_weak_cert "/opt/oracle/listener/certs/crs.pem"        "/opt/oracle/listener/certs/crs-key.pem"        "crs.ora.howdens.local"   
+generate_weak_cert "/opt/oracle/listener/certs/scan03.pem"     "/opt/oracle/listener/certs/scan03-key.pem"     "scan03.ora.howdens.local"
+generate_weak_cert "/opt/oracle/listener/certs/vip03.pem"      "/opt/oracle/listener/certs/vip03-key.pem"      "vip03.ora.howdens.local" 
 
 echo ""
-echo -e "${YELLOW}Deploying Integration/Middleware Certificates (30 certs)...${NC}"
+echo "Generating Integration/Middleware Certificates (30 certs)..."
 
-# IBM MQ (10 certs)
-echo "  Creating IBM MQ certificates..."
-deploy_cert "/opt/integration/mq/certs/qmgr01.pem" "/opt/integration/mq/certs/qmgr01-key.pem"
-deploy_cert "/opt/integration/mq/certs/qmgr02.pem" "/opt/integration/mq/certs/qmgr02-key.pem"
-deploy_cert "/opt/integration/mq/certs/channel-sap.pem" "/opt/integration/mq/certs/channel-sap-key.pem"
-deploy_cert "/opt/integration/mq/certs/channel-oracle.pem" "/opt/integration/mq/certs/channel-oracle-key.pem"
-deploy_cert "/opt/integration/mq/certs/channel-web.pem" "/opt/integration/mq/certs/channel-web-key.pem"
-deploy_cert "/opt/integration/mq/certs/listener.pem" "/opt/integration/mq/certs/listener-key.pem"
-deploy_cert "/opt/integration/mq/certs/client.pem" "/opt/integration/mq/certs/client-key.pem"
-deploy_cert "/opt/integration/mq/certs/admin.pem" "/opt/integration/mq/certs/admin-key.pem"
-deploy_cert "/opt/integration/mq/certs/monitoring.pem" "/opt/integration/mq/certs/monitoring-key.pem"
-deploy_cert "/opt/integration/mq/certs/cluster.pem" "/opt/integration/mq/certs/cluster-key.pem"
+echo "  IBM MQ..."
+generate_weak_cert "/opt/integration/mq/certs/qmgr01.pem"       "/opt/integration/mq/certs/qmgr01-key.pem"       "qmgr01.mq.howdens.local" 
+generate_weak_cert "/opt/integration/mq/certs/qmgr02.pem"       "/opt/integration/mq/certs/qmgr02-key.pem"       "qmgr02.mq.howdens.local" 
+generate_weak_cert "/opt/integration/mq/certs/channel-sap.pem"  "/opt/integration/mq/certs/channel-sap-key.pem"  "ch-sap.mq.howdens.local" 
+generate_weak_cert "/opt/integration/mq/certs/channel-ora.pem"  "/opt/integration/mq/certs/channel-ora-key.pem"  "ch-ora.mq.howdens.local" 
+generate_weak_cert "/opt/integration/mq/certs/channel-web.pem"  "/opt/integration/mq/certs/channel-web-key.pem"  "ch-web.mq.howdens.local" 
+generate_weak_cert "/opt/integration/mq/certs/listener.pem"     "/opt/integration/mq/certs/listener-key.pem"     "lst.mq.howdens.local"    
+generate_weak_cert "/opt/integration/mq/certs/client.pem"       "/opt/integration/mq/certs/client-key.pem"       "client.mq.howdens.local" 
+generate_weak_cert "/opt/integration/mq/certs/admin.pem"        "/opt/integration/mq/certs/admin-key.pem"        "admin.mq.howdens.local"  
+generate_weak_cert "/opt/integration/mq/certs/monitoring.pem"   "/opt/integration/mq/certs/monitoring-key.pem"   "mon.mq.howdens.local"    
+generate_weak_cert "/opt/integration/mq/certs/cluster.pem"      "/opt/integration/mq/certs/cluster-key.pem"      "cluster.mq.howdens.local"
 
-# API Gateway (8 certs)
-echo "  Creating API Gateway certificates..."
-deploy_cert "/opt/integration/api/certs/gateway.pem" "/opt/integration/api/certs/gateway-key.pem"
-deploy_cert "/opt/integration/api/certs/portal.pem" "/opt/integration/api/certs/portal-key.pem"
-deploy_cert "/opt/integration/api/certs/manager.pem" "/opt/integration/api/certs/manager-key.pem"
-deploy_cert "/opt/integration/api/certs/analytics.pem" "/opt/integration/api/certs/analytics-key.pem"
-deploy_cert "/opt/integration/api/certs/oauth.pem" "/opt/integration/api/certs/oauth-key.pem"
-deploy_cert "/opt/integration/api/certs/jwt.pem" "/opt/integration/api/certs/jwt-key.pem"
-deploy_cert "/opt/integration/api/certs/backend.pem" "/opt/integration/api/certs/backend-key.pem"
-deploy_cert "/opt/integration/api/certs/developer.pem" "/opt/integration/api/certs/developer-key.pem"
-
-# ESB (6 certs)
-echo "  Creating ESB certificates..."
-deploy_cert "/opt/integration/esb/certs/server.pem" "/opt/integration/esb/certs/server-key.pem"
-deploy_cert "/opt/integration/esb/certs/sap-adapter.pem" "/opt/integration/esb/certs/sap-adapter-key.pem"
-deploy_cert "/opt/integration/esb/certs/oracle-adapter.pem" "/opt/integration/esb/certs/oracle-adapter-key.pem"
-deploy_cert "/opt/integration/esb/certs/http-adapter.pem" "/opt/integration/esb/certs/http-adapter-key.pem"
-deploy_cert "/opt/integration/esb/certs/soap-adapter.pem" "/opt/integration/esb/certs/soap-adapter-key.pem"
-deploy_cert "/opt/integration/esb/certs/rest-adapter.pem" "/opt/integration/esb/certs/rest-adapter-key.pem"
-
-# B2B Gateway (6 certs)
-echo "  Creating B2B Gateway certificates..."
-deploy_cert "/opt/integration/b2b/certs/gateway.pem" "/opt/integration/b2b/certs/gateway-key.pem"
-deploy_cert "/opt/integration/b2b/certs/edi.pem" "/opt/integration/b2b/certs/edi-key.pem"
-deploy_cert "/opt/integration/b2b/certs/as2.pem" "/opt/integration/b2b/certs/as2-key.pem"
-deploy_cert "/opt/integration/b2b/certs/sftp.pem" "/opt/integration/b2b/certs/sftp-key.pem"
-deploy_cert "/opt/integration/b2b/certs/partner-a.pem" "/opt/integration/b2b/certs/partner-a-key.pem"
-deploy_cert "/opt/integration/b2b/certs/partner-b.pem" "/opt/integration/b2b/certs/partner-b-key.pem"
+echo "  API Gateway / ESB / B2B..."
+generate_weak_cert "/opt/integration/api/certs/gateway.pem"   "/opt/integration/api/certs/gateway-key.pem"   "gw.api.howdens.local"    
+generate_weak_cert "/opt/integration/api/certs/portal.pem"    "/opt/integration/api/certs/portal-key.pem"    "portal.api.howdens.local"
+generate_weak_cert "/opt/integration/api/certs/manager.pem"   "/opt/integration/api/certs/manager-key.pem"   "mgr.api.howdens.local"   
+generate_weak_cert "/opt/integration/api/certs/analytics.pem" "/opt/integration/api/certs/analytics-key.pem" "analytics.api.howdens.local"
+generate_weak_cert "/opt/integration/api/certs/oauth.pem"     "/opt/integration/api/certs/oauth-key.pem"     "oauth.api.howdens.local" 
+generate_weak_cert "/opt/integration/api/certs/jwt.pem"       "/opt/integration/api/certs/jwt-key.pem"       "jwt.api.howdens.local"   
+generate_weak_cert "/opt/integration/api/certs/backend.pem"   "/opt/integration/api/certs/backend-key.pem"   "be.api.howdens.local"    
+generate_weak_cert "/opt/integration/api/certs/developer.pem" "/opt/integration/api/certs/developer-key.pem" "dev.api.howdens.local"   
+generate_weak_cert "/opt/integration/esb/certs/server.pem"        "/opt/integration/esb/certs/server-key.pem"        "esb.howdens.local"       
+generate_weak_cert "/opt/integration/esb/certs/sap-adapter.pem"   "/opt/integration/esb/certs/sap-adapter-key.pem"   "sap-esb.howdens.local"   
+generate_weak_cert "/opt/integration/esb/certs/oracle-adapter.pem" "/opt/integration/esb/certs/oracle-adapter-key.pem" "ora-esb.howdens.local" 
+generate_weak_cert "/opt/integration/esb/certs/http-adapter.pem"  "/opt/integration/esb/certs/http-adapter-key.pem"  "http-esb.howdens.local"  
+generate_weak_cert "/opt/integration/esb/certs/soap-adapter.pem"  "/opt/integration/esb/certs/soap-adapter-key.pem"  "soap-esb.howdens.local"  
+generate_weak_cert "/opt/integration/esb/certs/rest-adapter.pem"  "/opt/integration/esb/certs/rest-adapter-key.pem"  "rest-esb.howdens.local"  
+generate_weak_cert "/opt/integration/b2b/certs/gateway.pem"  "/opt/integration/b2b/certs/gateway-key.pem"  "b2b.howdens.local"      
+generate_weak_cert "/opt/integration/b2b/certs/edi.pem"      "/opt/integration/b2b/certs/edi-key.pem"      "edi.b2b.howdens.local"  
+generate_weak_cert "/opt/integration/b2b/certs/as2.pem"      "/opt/integration/b2b/certs/as2-key.pem"      "as2.b2b.howdens.local"  
+generate_weak_cert "/opt/integration/b2b/certs/sftp.pem"     "/opt/integration/b2b/certs/sftp-key.pem"     "sftp.b2b.howdens.local" 
+generate_weak_cert "/opt/integration/b2b/certs/partner-a.pem" "/opt/integration/b2b/certs/partner-a-key.pem" "pa.b2b.howdens.local"  
+generate_weak_cert "/opt/integration/b2b/certs/partner-b.pem" "/opt/integration/b2b/certs/partner-b-key.pem" "pb.b2b.howdens.local"  
 
 echo ""
-echo -e "${YELLOW}Deploying Infrastructure Certificates (10 certs)...${NC}"
+echo "Generating Infrastructure Certificates (10 certs)..."
 
-# Load Balancers (5 certs)
-echo "  Creating Load Balancer certificates..."
-deploy_cert "/opt/loadbalancer/certs/lb01.pem" "/opt/loadbalancer/certs/lb01-key.pem"
-deploy_cert "/opt/loadbalancer/certs/lb02.pem" "/opt/loadbalancer/certs/lb02-key.pem"
-deploy_cert "/opt/loadbalancer/certs/vip-sap.pem" "/opt/loadbalancer/certs/vip-sap-key.pem"
-deploy_cert "/opt/loadbalancer/certs/vip-oracle.pem" "/opt/loadbalancer/certs/vip-oracle-key.pem"
-deploy_cert "/opt/loadbalancer/certs/admin.pem" "/opt/loadbalancer/certs/admin-key.pem"
+generate_weak_cert "/opt/loadbalancer/certs/lb01.pem"      "/opt/loadbalancer/certs/lb01-key.pem"      "lb01.howdens.local"    
+generate_weak_cert "/opt/loadbalancer/certs/lb02.pem"      "/opt/loadbalancer/certs/lb02-key.pem"      "lb02.howdens.local"    
+generate_weak_cert "/opt/loadbalancer/certs/vip-sap.pem"   "/opt/loadbalancer/certs/vip-sap-key.pem"   "vip-sap.howdens.local" 
+generate_weak_cert "/opt/loadbalancer/certs/vip-oracle.pem" "/opt/loadbalancer/certs/vip-oracle-key.pem" "vip-ora.howdens.local"
+generate_weak_cert "/opt/loadbalancer/certs/admin.pem"     "/opt/loadbalancer/certs/admin-key.pem"     "admin.lb.howdens.local"
+generate_weak_cert "/opt/proxy/certs/proxy01.pem"    "/opt/proxy/certs/proxy01-key.pem"    "proxy01.howdens.local"  
+generate_weak_cert "/opt/proxy/certs/proxy02.pem"    "/opt/proxy/certs/proxy02-key.pem"    "proxy02.howdens.local"  
+generate_weak_cert "/opt/proxy/certs/frontend.pem"   "/opt/proxy/certs/frontend-key.pem"   "fe.proxy.howdens.local" 
+generate_weak_cert "/opt/proxy/certs/backend.pem"    "/opt/proxy/certs/backend-key.pem"    "be.proxy.howdens.local" 
+generate_weak_cert "/opt/proxy/certs/ssl-offload.pem" "/opt/proxy/certs/ssl-offload-key.pem" "ssl.proxy.howdens.local"
 
-# Reverse Proxies (5 certs)
-echo "  Creating Reverse Proxy certificates..."
-deploy_cert "/opt/proxy/certs/proxy01.pem" "/opt/proxy/certs/proxy01-key.pem"
-deploy_cert "/opt/proxy/certs/proxy02.pem" "/opt/proxy/certs/proxy02-key.pem"
-deploy_cert "/opt/proxy/certs/frontend.pem" "/opt/proxy/certs/frontend-key.pem"
-deploy_cert "/opt/proxy/certs/backend.pem" "/opt/proxy/certs/backend-key.pem"
-deploy_cert "/opt/proxy/certs/ssl-offload.pem" "/opt/proxy/certs/ssl-offload-key.pem"
-
-# Cleanup temporary directory
-rm -rf "$TEMP_DIR"
+# Cleanup
+rm -rf "$WORK_DIR"
 
 echo ""
-echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}Certificate Deployment Complete!${NC}"
-echo -e "${GREEN}========================================${NC}"
+echo "========================================"
+echo "Certificate Deployment Complete!"
+echo "========================================"
 echo ""
-echo -e "${GREEN}Total certificates deployed: ${CERT_COUNT}${NC}"
+echo "Total certificates generated: $CERT_COUNT"
 echo ""
-echo -e "${YELLOW}Certificate Distribution:${NC}"
-echo "  SAP Application Layer:    60 certificates"
-echo "  Oracle Database Layer:    50 certificates"
-echo "  Integration/Middleware:   30 certificates"
-echo "  Infrastructure:           10 certificates"
-echo "  ────────────────────────────────────────"
-echo "  TOTAL:                   150 certificates"
+echo "Distribution:"
+echo "  SAP Application Layer:   60 certificates"
+echo "  Oracle Database Layer:   50 certificates"
+echo "  Integration/Middleware:  30 certificates"
+echo "  Infrastructure:          10 certificates"
+echo "  ─────────────────────────────────────"
+echo "  TOTAL:                  150 certificates"
 echo ""
-echo -e "${YELLOW}Certificate Characteristics:${NC}"
-echo "  - Real CA certificates from system bundle"
-echo "  - Issued between 2008-2011 (15-18 years old)"
-echo "  - Weak crypto (RSA 1024/2048, SHA-1)"
-echo "  - Randomly distributed from 170+ CA certificates"
-echo "  - Distributed across realistic SAP/Oracle paths"
-echo "  - Ready to be detected by PowerSC as weak/old"
+echo "Certificate characteristics:"
+echo "  Algorithm: SHA-1 + RSA 1024-bit (WEAK — classified by PowerSC)"
+echo "  Issued:    Today (current date � age is not the weakness, algorithm is)"
+echo "  Domains:   *.howdens.local"
 echo ""
-echo -e "${YELLOW}Next Steps:${NC}"
-echo "1. Trigger PowerSC Quantum Safety scan to discover these certificates"
-echo "2. Capture 'BEFORE' state showing weak & old certificates"
-echo "3. Configure Vault PKI to issue replacement certificates"
-echo "4. Deploy Vault-issued certificates to replace these old ones"
-echo "5. Rescan with PowerSC to show improvement"
+echo "Next step: trigger PowerSC Quantum Safety scan on this host"
 echo ""
-echo -e "${GREEN}Certificates are ready for PowerSC scanning!${NC}"
-echo ""
-
-# Made with Bob
