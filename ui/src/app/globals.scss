@@ -1,3 +1,6 @@
+// Disable IBM Plex font loading — @ibm/plex not required as a build dependency
+// Carbon components and styling work fully; fonts fall back to system sans-serif
+@use '@carbon/react/scss/config' with ($font-path: '');
 @use '@carbon/react';
 @use '@carbon/react/scss/breakpoint' as *;
 @use '../components/Header/header';
