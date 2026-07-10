@@ -93,14 +93,14 @@ replace_with_vault_cert() {
 
     # Check for Vault errors (grep -q is AIX-safe; grep -o is not)
     if echo "$vault_output" | grep -q '"errors"'; then
-        error_msg=$(echo "$vault_output" | sed -n 's/.*"errors":\["\([^"]*\)".*/\1/p')
+        error_msg=$(echo "$vault_output" | awk -F'"errors":\["' 'NF>1{gsub(/".*$/,"",$2); print $2}')
         echo "  VAULT ERROR: $common_name: $error_msg"
         touch "$cert_path" "$key_path" 2>/dev/null || true
         return 1
     fi
 
-    # Extract certificate using sed (no jq, no grep -o — AIX-compatible)
-    cert_data=$(echo "$vault_output" | sed -n 's/.*"certificate":"\([^"]*\)".*/\1/p' | sed 's/\\n/\n/g')
+    # Extract certificate using awk (sed hits line-buffer limits on AIX for long JSON lines)
+    cert_data=$(echo "$vault_output" | awk -F'"certificate":"' 'NF>1{gsub(/".*$/,"",$2); gsub(/\\n/,"\n",$2); print $2}')
     if [ -z "$cert_data" ]; then
         echo "  FAILED: empty certificate for $common_name"
         touch "$cert_path" "$key_path" 2>/dev/null || true
@@ -108,8 +108,8 @@ replace_with_vault_cert() {
     fi
     echo "$cert_data" > "$cert_path"
 
-    # Extract private key using sed
-    key_data=$(echo "$vault_output" | sed -n 's/.*"private_key":"\([^"]*\)".*/\1/p' | sed 's/\\n/\n/g')
+    # Extract private key using awk
+    key_data=$(echo "$vault_output" | awk -F'"private_key":"' 'NF>1{gsub(/".*$/,"",$2); gsub(/\\n/,"\n",$2); print $2}')
     if [ -z "$key_data" ]; then
         echo "  FAILED: empty key for $common_name"
         touch "$key_path" 2>/dev/null || true
