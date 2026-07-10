@@ -196,6 +196,24 @@ can be adapted for their customer.
 | 2026-06-09 | Vault PKI configured; certificate issuance confirmed from AIX via curl REST API |
 | 2026-06-09 | `VAULT-SETUP-GUIDE.md` written documenting the Podman-based deployment path |
 | 2026-07-10 | Recipe journey started — hardcoded IPs parameterised, Bob skills authored, COLLECTION.md written |
+| 2026-07-11 | **Live test on TechZone reservation p1294** — pvm1 `p1294-pvm1.p1294.cecc.ihost.com` (PowerSC), pvm2 `p1294-pvm2.p1294.cecc.ihost.com` (RHEL/Vault), pvm3 `p1294-pvm3.p1294.cecc.ihost.com` (AIX 7.3) |
+| 2026-07-11 | **Discovery 1 — Podman not pre-installed:** Fresh RHEL 9.6 in PowerSC reservation does not have Podman. Fix: `sudo dnf install -y podman` required before any container step. Added to deployment skill Step 2. |
+| 2026-07-11 | **Discovery 2 — fapolicyd NOT blocking Podman on p1294:** This reservation's image does not exhibit the fapolicyd/Podman blocking behaviour seen on the Howdens p1229 environment. The trust remediation step in the skill is retained as a safety net — it is idempotent and does no harm when fapolicyd is not blocking. |
+| 2026-07-11 | **Discovery 3 — Vault container exits when SSH session closes:** `podman run -d` is insufficient; the container stops when the SSH session ends. Fix: write a start script to `/tmp/start-vault.sh` on the server and execute it, then generate a systemd user service. Vault now persists across SSH sessions and reboots via `systemctl --user enable vault.service` + `loginctl enable-linger cecuser`. |
+| 2026-07-11 | **Discovery 4 — PowerShell SSH heredoc quoting:** Multi-line `ssh -i ... "bash -c '...'"` heredocs fail in PowerShell. Fix: use PowerShell here-strings (`$script = @'...'@`) piped via `ssh ... "bash -s"` instead of inline heredocs. |
+| 2026-07-11 | **Discovery 5 — AIX curl not in default PATH:** `curl` is at `/opt/freeware/bin/curl` on AIX 7.3 but not in `$PATH` by default. Fix: `export PATH="/opt/freeware/bin:$PATH"` added at the top of both AIX scripts (`generate-old-certificates.sh`, `replace-with-vault-certificates.sh`). |
+| 2026-07-11 | **Discovery 6 — AIX `grep -o` confirmed not supported:** Live test confirmed. All scripts use `grep -q` (safe) and `sed` (safe) for extraction. No changes needed — scripts were already written correctly. |
+| 2026-07-11 | **Discovery 7 — git clone permission error on hardened RHEL:** `git clone` fails with a hooks permission error on the hardened RHEL host. Fix: `git clone --template="" <url>` bypasses the hooks directory. |
+| 2026-07-11 | **Discovery 8 — npm install blocked by fapolicyd:** `npm install` fails with `ibmtelemetry: Operation not permitted` — fapolicyd blocks the IBM Plex telemetry postinstall script. Fix: `npm install --ignore-scripts`. |
+| 2026-07-11 | **Discovery 9 — `next build` blocked by fapolicyd (EPERM):** fapolicyd blocks `open()` on files in `~/node_modules/` (user home directory is not in RPM trust database). The Next.js build cannot run directly on pvm2. Current investigation: build locally on Windows and SCP the `.next/` output to the server. |
+| 2026-07-11 | **Discovery 10 — Node 16.20.2 on RHEL 9 via dnf:** The default `nodejs` package from RHEL 9 AppStream is Node 16.20.2. Express 4 and Next.js 13 are compatible with Node 16. Do NOT enable NodeSource — it does not support ppc64le. |
+| 2026-07-11 | **Discovery 11 — Quantum safe scan path:** Selecting all of `/opt` includes `/opt/freeware` (IBM AIX Toolbox with hundreds of system certificates), causing slow scans and noisy results. Fix documented in skill: select only `sap`, `oracle`, `integration`, `loadbalancer`, `proxy` under `/opt`. |
+| 2026-07-11 | Vault PKI fully configured on p1294 — Root CA generated, `sap-oracle` role created with 24h TTL, test certificate issued. ✅ |
+| 2026-07-11 | Certificate issuance confirmed from AIX pvm3 to Vault on pvm2 via curl REST API. ✅ |
+| 2026-07-11 | 150 old certificates deployed to AIX pvm3 (147 extracted from CA bundle). ✅ |
+| 2026-07-11 | `replace-with-vault-certificates.sh` transferred to pvm3. ✅ |
+| 2026-07-11 | Vault systemd user service enabled on pvm2 — survives reboot. ✅ |
+| 2026-07-11 | PowerSC UI: keystore generated for pvm3, AIX client appeared as Endpoint, quantum safe scan paths configured (five targeted `/opt` subdirectories). In progress ⏳ |
 
 ---
 
@@ -212,11 +230,18 @@ can be adapted for their customer.
 - [x] Write `powersc-vault-story-builder` skill
 - [x] Write `COLLECTION.md`
 - [x] Write IBM Power Security Demo mode
-- [ ] **Handoff test** — tester reserves fresh TechZone PowerSC environment and runs recipe end-to-end
-- [ ] Validate fapolicyd remediation sequence on fresh reservation (may differ from Howdens env)
-- [ ] Confirm `icr.io/ppc64le-oss/vault-ppc64le:v1.14.8` image still available and pulls cleanly
-- [ ] Test `generate-old-certificates.sh` on fresh AIX instance (CA bundle path may vary)
-- [ ] Validate full before/after cycle: generate → scan → replace → rescan
+- [x] Add `version` + `author` frontmatter to all four skills
+- [x] Update COLLECTION.md asset table with all four skills
+- [x] Document all p1294 live discoveries in deployment log (11 discoveries, all logged)
+- [x] Update Step 2 — Podman install required on fresh RHEL 9.6
+- [x] Update Step 3 — note Vault container exits on SSH close; systemd service required
+- [x] Update Step 5.3 — select only five targeted `/opt` subdirectories, not all of `/opt`
+- [x] Update Step 10 — `git clone --template=""` and `npm install --ignore-scripts`
+- [ ] **BLOCKER: Resolve Carbon UI build on RHEL** — fapolicyd blocks `next build` in `~/node_modules/`; investigate fapolicyd home directory trust rule or alternative build/deploy path
+- [ ] Complete before/after demo cycle on p1294 — run `generate-old-certificates.sh` → BEFORE scan → `replace-with-vault-certificates.sh` → AFTER scan
+- [ ] Confirm `icr.io/ppc64le-oss/vault-ppc64le:v1.14.8` image availability documented (confirmed on p1294 ✅)
+- [ ] Confirm `generate-old-certificates.sh` CA bundle path on fresh AIX instance (confirmed on p1294 ✅)
+- [ ] **Handoff test** — second tester reserves fresh TechZone PowerSC environment and runs recipe end-to-end
 - [ ] Determine correct marketplace repo target (EMEA or default CE marketplace) and submit
 
 ---

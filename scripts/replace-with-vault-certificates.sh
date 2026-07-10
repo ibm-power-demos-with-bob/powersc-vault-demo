@@ -23,6 +23,11 @@
 # Note: Not using 'set -e' to allow graceful error handling
 # This ensures the script continues even if individual certificate issuance fails
 
+# On AIX, curl lives in /opt/freeware/bin — add it to PATH if not already there
+if [ -d /opt/freeware/bin ]; then
+  export PATH="/opt/freeware/bin:$PATH"
+fi
+
 # Color output
 RED='\033[0;31m'
 GREEN='\033[0;32m'

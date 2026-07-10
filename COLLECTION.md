@@ -201,10 +201,15 @@ as a reference for how to apply IBM Consulting Advantage research to this demo.
 |-------|-----------|
 | TechZone v1 — Bob cannot auto-reserve | Manual reservation (~5 minutes effort) |
 | No native ppc64le Vault binary | Power-native container `icr.io/ppc64le-oss/vault-ppc64le:v1.14.8` |
-| fapolicyd blocks Podman on fresh RHEL host | Trust remediation in deployment skill (Step 2) |
-| AIX scripting — no jq, no grep -o | curl + sed patterns in all scripts |
+| Podman not pre-installed on fresh RHEL 9.6 | `sudo dnf install -y podman` — first line of Step 2 in deployment skill |
+| fapolicyd may block Podman on RHEL host | Trust remediation in deployment skill (Step 2) — idempotent, safe to run always |
+| Vault container exits when SSH session closes | Use systemd user service (`systemctl --user enable vault`) + `loginctl enable-linger` |
+| AIX scripting — no jq, no grep -o | curl + sed patterns in all scripts; PATH fix for `/opt/freeware/bin` |
 | Vault dev mode loses config on restart | Re-run PKI setup if container restarts |
+| git clone hooks error on hardened RHEL | `git clone --template="" <url>` |
+| npm install blocked by fapolicyd | `npm install --ignore-scripts` |
 | CA bundle path varies on AIX | Check `openssl version -d`; update `CA_BUNDLE` in generate script if needed |
+| Quantum safe scan — do not select all of `/opt` | Check only `sap`, `oracle`, `integration`, `loadbalancer`, `proxy` — not `/opt/freeware` |
 
 ---
 

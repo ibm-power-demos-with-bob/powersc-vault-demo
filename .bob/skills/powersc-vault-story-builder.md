@@ -5,6 +5,8 @@ description: >
   IBM Power demo. Covers IBM Consulting Advantage research workflow, extracting business
   context from customer documents, replacing Howdens-specific language, adapting the
   JLR case study for other industries, and tailoring the five demo acts per audience persona.
+version: 1.0.0
+author: EMEA AI on IBM Power Squad
 ---
 
 # Skill: PowerSC + Vault Customer Story Builder

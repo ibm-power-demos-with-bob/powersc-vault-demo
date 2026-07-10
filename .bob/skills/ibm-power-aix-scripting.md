@@ -5,6 +5,8 @@ description: >
   CLIs (Vault, kubectl), set -e, and GNU-specific syntax all fail on AIX and what to use
   instead. Includes complete working patterns for curl REST API calls, JSON parsing with
   sed/awk, and graceful error handling.
+version: 1.0.0
+author: EMEA AI on IBM Power Squad
 ---
 
 # Skill: AIX-Compatible Scripting for IBM Power Demos

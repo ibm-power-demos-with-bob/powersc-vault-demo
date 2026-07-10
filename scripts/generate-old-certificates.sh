@@ -16,6 +16,11 @@
 # Note: Not using 'set -e' to allow graceful error handling
 # set -e  # Exit on error
 
+# On AIX, toolbox binaries live in /opt/freeware/bin — add to PATH if present
+if [ -d /opt/freeware/bin ]; then
+  export PATH="/opt/freeware/bin:$PATH"
+fi
+
 # Color output for better readability
 RED='\033[0;31m'
 GREEN='\033[0;32m'

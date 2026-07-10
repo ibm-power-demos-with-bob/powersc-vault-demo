@@ -5,6 +5,8 @@ description: >
   Covers TechZone environment topology, Vault deployment via rootless Podman (Power-native
   container), fapolicyd trust remediation, Vault PKI configuration, AIX certificate
   deployment scripts, PowerSC UI manual steps, demo execution, and demo reset procedure.
+version: 1.0.0
+author: EMEA AI on IBM Power Squad
 ---
 
 # Skill: Deploy PowerSC + HashiCorp Vault on IBM Power
@@ -57,14 +59,20 @@ ssh-keygen -R "$VAULT_HOST"
 ssh-keygen -R "$AIX_HOST"
 ```
 
-## Step 2: fapolicyd Trust Remediation on RHEL Host
+## Step 2: Install Podman and Apply fapolicyd Trust Remediation on RHEL Host
 
-The RHEL host in the PowerSC reservation is pre-hardened with `fapolicyd` active.
-This enforces an allow-list for executables and shared libraries. OCI container runtimes
-(`crun`, `runc`, `conmon`) are NOT in the default trust list and will fail with
-`Operation not permitted` or silent `runc create failed` errors.
+**Fresh TechZone PowerSC reservations do not have Podman pre-installed.** Install it first:
 
-**This step must be completed before any Podman container can run.**
+```bash
+ssh -i "$SSH_KEY" "$SSH_USER@$VAULT_HOST" "sudo dnf install -y podman"
+```
+
+The RHEL host is also pre-hardened with `fapolicyd` active, which enforces an allow-list
+for executables and shared libraries. OCI container runtimes (`crun`, `runc`, `conmon`)
+are NOT in the default trust list and will fail with `Operation not permitted` or silent
+`runc create failed` errors.
+
+**Apply the trust remediation before attempting to start any container.**
 
 ```bash
 ssh -i "$SSH_KEY" "$SSH_USER@$VAULT_HOST" << 'ENDSSH'
@@ -101,6 +109,10 @@ Vault runs as a **Power-native container** using rootless Podman as `cecuser`. T
 There is no current native ppc64le Vault binary on HashiCorp's release pages. The
 container is the correct deployment path for this demo.
 
+> **Important — PowerShell heredoc quoting:** Multi-line `ssh "bash -c '...'"` blocks
+> fail in PowerShell. Write the script to a file on the server first, then execute it.
+> Use PowerShell here-strings (`$script = @'...'@`) piped via `ssh ... "bash -s"`.
+
 ```bash
 ssh -i "$SSH_KEY" "$SSH_USER@$VAULT_HOST" << 'ENDSSH'
 # Stop and remove any existing Vault containers (safe on re-run)
@@ -128,6 +140,11 @@ ENDSSH
 ```
 
 Expected: container listed in `podman ps`, health response contains `"initialized":true`.
+
+> **Important — Vault container persistence:** `podman run -d` alone is not sufficient.
+> The container will exit when the SSH session closes. Immediately after starting Vault,
+> set up the systemd user service (see Vault Container Management section below). Do this
+> before running the PKI setup.
 
 ### Narrative for client audience
 Say: "Vault is running on IBM Power in a Power-native container deployment model."
@@ -214,9 +231,16 @@ The AIX client will NOT appear in the Endpoints list until keystores are generat
 ### 5.3 Configure Quantum Safe Scan Paths (CRITICAL)
 1. In the Endpoints list, click the AIX client row or find its **Actions** menu
 2. Select **"Quantum safe scan configuration"**
-3. In the directory tree, **check the `/opt` checkbox**
-   - This enables scanning of all current and future `/opt` subdirectories
-   - Includes: `/opt/sap`, `/opt/oracle`, `/opt/integration`, `/opt/loadbalancer`, `/opt/proxy`
+3. In the directory tree, expand `/opt` and **check only these five subdirectories**:
+   - `sap`
+   - `oracle`
+   - `integration`
+   - `loadbalancer`
+   - `proxy`
+   > **Do NOT check `/opt` at the top level.** The AIX Toolbox lives at `/opt/freeware`
+   > and contains hundreds of system certificates that are not part of the demo story.
+   > Scanning all of `/opt` produces noise in the results and significantly slows the scan.
+   > Selecting the five targeted paths gives clean, fast, unambiguous before/after results.
 4. Click **Save**
 
 ### 5.4 Run Initial Scan
@@ -389,7 +413,8 @@ ssh -i "$SSH_KEY" "$SSH_USER@$VAULT_HOST" << ENDSSH
 # Clone the repo (or git pull if already cloned)
 if [ ! -d ~/powersc-vault-demo ]; then
   sudo dnf install -y git
-  git clone https://github.com/ibm-power-demos-with-bob/powersc-vault-demo.git ~/powersc-vault-demo
+  # Use --template="" to bypass git hooks permission error on hardened RHEL
+  git clone --template="" https://github.com/ibm-power-demos-with-bob/powersc-vault-demo.git ~/powersc-vault-demo
 else
   cd ~/powersc-vault-demo && git pull
 fi
@@ -400,7 +425,8 @@ cd ~/powersc-vault-demo/ui
 command -v node || sudo dnf install -y nodejs npm
 
 # Install dependencies
-npm install
+# --ignore-scripts required: fapolicyd blocks IBM Plex telemetry postinstall script
+npm install --ignore-scripts
 
 # Build Next.js app
 npm run build

@@ -6,6 +6,8 @@ description: >
   hardened RHEL hosts (including PowerSC TechZone reservations), the correct container
   image and startup flags, and how to drive Vault via podman exec when the Vault CLI
   is not directly available on the host.
+version: 1.0.0
+author: EMEA AI on IBM Power Squad
 ---
 
 # Skill: Vault on IBM Power via Rootless Podman
