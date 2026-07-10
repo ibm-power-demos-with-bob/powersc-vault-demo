@@ -237,8 +237,8 @@ can be adapted for their customer.
 - [x] Update Step 3 — note Vault container exits on SSH close; systemd service required
 - [x] Update Step 5.3 — select only five targeted `/opt` subdirectories, not all of `/opt`
 - [x] Update Step 10 — `git clone --template=""` and `npm install --ignore-scripts`
-- [ ] **BLOCKER: Resolve Carbon UI build on RHEL** — fapolicyd blocks `next build` in `~/node_modules/`; investigate fapolicyd home directory trust rule or alternative build/deploy path
-- [ ] Complete before/after demo cycle on p1294 — run `generate-old-certificates.sh` → BEFORE scan → `replace-with-vault-certificates.sh` → AFTER scan
+- [x] **Resolve Carbon UI build on RHEL** — fapolicyd rule `69-home-allow.rules` + `globals.scss` SCSS fixes + `@ibm/plex` font-path override. Build succeeds, all 6 routes compile. UI serving on port 3001. ✅
+- [x] Complete before/after demo cycle on p1294 — BEFORE: 599 weak certs / 150 weak keys → AFTER: 303 weak certs / 2 weak keys. 150 Vault-issued replacements confirmed. ✅
 - [ ] Confirm `icr.io/ppc64le-oss/vault-ppc64le:v1.14.8` image availability documented (confirmed on p1294 ✅)
 - [ ] Confirm `generate-old-certificates.sh` CA bundle path on fresh AIX instance (confirmed on p1294 ✅)
 - [ ] **Handoff test** — second tester reserves fresh TechZone PowerSC environment and runs recipe end-to-end
