@@ -305,12 +305,13 @@ from AIX to the RHEL host. It uses `curl` + `sed` (AIX-compatible, no jq, no Vau
 # Transfer script to AIX
 scp -i "$SSH_KEY" scripts/replace-with-vault-certificates.sh "$SSH_USER@$AIX_HOST:/home/$SSH_USER/"
 
-# Run script on AIX — Vault address is the RHEL host's FQDN (port 8200)
+# Strip CRLF, copy to /tmp, run via sudo /bin/sh (same pattern as generate script)
 ssh -i "$SSH_KEY" "$SSH_USER@$AIX_HOST" \
-  "export VAULT_ADDR=\"http://$VAULT_HOST:8200\" && \
-   export VAULT_TOKEN=\"myroot\" && \
-   sudo -E /home/$SSH_USER/replace-with-vault-certificates.sh"
+  "tr -d '\r' < /home/$SSH_USER/replace-with-vault-certificates.sh > /tmp/replace-certs.sh && \
+   sudo /bin/sh /tmp/replace-certs.sh http://$VAULT_HOST:8200 myroot"
 ```
+
+> **Note:** The replace script reads `VAULT_ADDR` and `VAULT_TOKEN` from environment variables. Pass them as arguments or export before the `sudo /bin/sh` call. The `sudo -E` pattern (preserving environment) does not work reliably on TechZone AIX — use explicit variable passing instead.
 
 Expected output: 150 `✓ Replaced:` lines, then summary showing 150 total.
 

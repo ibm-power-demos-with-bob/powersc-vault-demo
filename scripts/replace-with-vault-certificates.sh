@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 ################################################################################
 # PowerSC + Vault Demo: Replace Old Certificates with Vault-Issued Ones
 # 
@@ -28,117 +28,104 @@ if [ -d /opt/freeware/bin ]; then
   export PATH="/opt/freeware/bin:$PATH"
 fi
 
-# Color output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
-echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}PowerSC + Vault Demo${NC}"
-echo -e "${GREEN}Replacing Old Certificates with Vault${NC}"
-echo -e "${GREEN}========================================${NC}"
+echo "========================================"
+echo "PowerSC + Vault Demo"
+echo "Replacing Old Certificates with Vault"
+echo "========================================"
 echo ""
 
 # Check prerequisites
 if [ -z "$VAULT_ADDR" ]; then
-    echo -e "${RED}ERROR: VAULT_ADDR not set${NC}"
+    echo "ERROR: VAULT_ADDR not set"
     echo "Please set: export VAULT_ADDR=\"http://<VAULT_HOST>:8200\""
     exit 1
 fi
 
 if [ -z "$VAULT_TOKEN" ]; then
-    echo -e "${RED}ERROR: VAULT_TOKEN not set${NC}"
+    echo "ERROR: VAULT_TOKEN not set"
     echo "Please set: export VAULT_TOKEN=\"your-vault-token\""
     exit 1
 fi
 
-# Check if curl is available (more universal than vault CLI)
-if ! command -v curl &> /dev/null; then
-    echo -e "${RED}ERROR: curl not found${NC}"
-    echo "Please install curl first"
+# Check curl is reachable (PATH already includes /opt/freeware/bin above)
+CURL_BIN=""
+if [ -x /opt/freeware/bin/curl ]; then
+    CURL_BIN=/opt/freeware/bin/curl
+elif [ -x /usr/bin/curl ]; then
+    CURL_BIN=/usr/bin/curl
+else
+    echo "ERROR: curl not found in /opt/freeware/bin or /usr/bin"
     exit 1
 fi
 
-# Note: We use grep/sed/awk for JSON parsing instead of jq for better AIX compatibility
-
-# Test Vault connectivity using curl
-echo -e "${YELLOW}Testing Vault connectivity...${NC}"
-if ! curl -s -f "$VAULT_ADDR/v1/sys/health" > /dev/null 2>&1; then
-    echo -e "${RED}ERROR: Cannot connect to Vault at $VAULT_ADDR${NC}"
+# Test Vault connectivity
+echo "Testing Vault connectivity..."
+if ! $CURL_BIN -s -f "$VAULT_ADDR/v1/sys/health" > /dev/null 2>&1; then
+    echo "ERROR: Cannot connect to Vault at $VAULT_ADDR"
     exit 1
 fi
-echo -e "${GREEN}✓ Vault connection successful${NC}"
+echo "Vault connection successful"
 echo ""
 
 # Counter for certificates replaced
 CERT_COUNT=0
 
 # Function to issue and deploy a Vault certificate using curl
+# Usage: replace_with_vault_cert <cert_path> <key_path> <common_name>
 replace_with_vault_cert() {
-    local cert_path=$1
-    local key_path=$2
-    local common_name=$3
-    
-    # Issue certificate from Vault using curl (24-hour TTL, strong crypto)
-    local vault_output=$(curl -s -X POST \
+    cert_path=$1
+    key_path=$2
+    common_name=$3
+
+    # Issue certificate from Vault (24-hour TTL, strong crypto)
+    vault_output=$($CURL_BIN -s -X POST \
         -H "X-Vault-Token: $VAULT_TOKEN" \
         -H "Content-Type: application/json" \
         -d "{\"common_name\":\"$common_name\",\"ttl\":\"24h\"}" \
         "$VAULT_ADDR/v1/pki/issue/sap-oracle" 2>/dev/null)
-    
-    local curl_exit_code=$?
-    
+    curl_exit_code=$?
+
     if [ $curl_exit_code -ne 0 ]; then
-        echo -e "${RED}  ✗ Failed to issue certificate for $common_name (curl exit code: $curl_exit_code)${NC}"
-        # Create empty files so the script can continue
+        echo "  FAILED: $common_name (curl exit $curl_exit_code)"
         touch "$cert_path" "$key_path" 2>/dev/null || true
         return 1
     fi
-    
-    # Check if Vault returned an error (look for "errors" field in JSON)
+
+    # Check for Vault errors (grep -q is AIX-safe; grep -o is not)
     if echo "$vault_output" | grep -q '"errors"'; then
-        local error_msg=$(echo "$vault_output" | sed -n 's/.*"errors":\["\([^"]*\)".*/\1/p')
-        echo -e "${RED}  ✗ Vault error for $common_name: $error_msg${NC}"
+        error_msg=$(echo "$vault_output" | sed -n 's/.*"errors":\["\([^"]*\)".*/\1/p')
+        echo "  VAULT ERROR: $common_name: $error_msg"
         touch "$cert_path" "$key_path" 2>/dev/null || true
         return 1
     fi
-    
-    # Extract certificate from JSON using sed (AIX-compatible, no grep -o)
-    # Look for "certificate":"-----BEGIN CERTIFICATE-----...-----END CERTIFICATE-----"
-    local cert_data=$(echo "$vault_output" | sed -n 's/.*"certificate":"\([^"]*\)".*/\1/p' | sed 's/\\n/\n/g')
-    
+
+    # Extract certificate using sed (no jq, no grep -o — AIX-compatible)
+    cert_data=$(echo "$vault_output" | sed -n 's/.*"certificate":"\([^"]*\)".*/\1/p' | sed 's/\\n/\n/g')
     if [ -z "$cert_data" ]; then
-        echo -e "${RED}  ✗ Failed to extract certificate for $common_name${NC}"
+        echo "  FAILED: empty certificate for $common_name"
         touch "$cert_path" "$key_path" 2>/dev/null || true
         return 1
     fi
-    
     echo "$cert_data" > "$cert_path"
-    
-    # Extract private key from JSON using sed (AIX-compatible)
-    # Look for "private_key":"-----BEGIN RSA PRIVATE KEY-----...-----END RSA PRIVATE KEY-----"
-    local key_data=$(echo "$vault_output" | sed -n 's/.*"private_key":"\([^"]*\)".*/\1/p' | sed 's/\\n/\n/g')
-    
+
+    # Extract private key using sed
+    key_data=$(echo "$vault_output" | sed -n 's/.*"private_key":"\([^"]*\)".*/\1/p' | sed 's/\\n/\n/g')
     if [ -z "$key_data" ]; then
-        echo -e "${RED}  ✗ Failed to extract private key for $common_name${NC}"
+        echo "  FAILED: empty key for $common_name"
         touch "$key_path" 2>/dev/null || true
         return 1
     fi
-    
     echo "$key_data" > "$key_path"
-    
-    # Set proper permissions
+
     chmod 644 "$cert_path" 2>/dev/null || true
-    chmod 600 "$key_path" 2>/dev/null || true
-    
-    ((CERT_COUNT++))
-    echo -e "${GREEN}  ✓ Replaced: $common_name${NC}"
+    chmod 600 "$key_path"  2>/dev/null || true
+
+    CERT_COUNT=$((CERT_COUNT + 1))
+    echo "  Replaced: $common_name"
     return 0
 }
 
-echo -e "${BLUE}Replacing SAP Application Layer Certificates (60 certs)...${NC}"
+echo "Replacing SAP Application Layer Certificates (60 certs)..."
 
 # SAP Production App Server 1 (10 certs)
 echo "  SAP App Server 1..."
@@ -222,7 +209,7 @@ replace_with_vault_cert "/opt/sap/gateway/certs/edi.pem" "/opt/sap/gateway/certs
 replace_with_vault_cert "/opt/sap/gateway/certs/idoc.pem" "/opt/sap/gateway/certs/idoc-key.pem" "sap-gateway-idoc.howdens.local"
 
 echo ""
-echo -e "${BLUE}Replacing Oracle Database Layer Certificates (50 certs)...${NC}"
+echo "Replacing Oracle Database Layer Certificates (50 certs)..."
 
 # Oracle Production DB 1 (12 certs)
 echo "  Oracle Production DB 1..."
@@ -290,7 +277,7 @@ replace_with_vault_cert "/opt/oracle/listener/certs/grid.pem" "/opt/oracle/liste
 replace_with_vault_cert "/opt/oracle/listener/certs/crs.pem" "/opt/oracle/listener/certs/crs-key.pem" "oracle-crs.howdens.local"
 
 echo ""
-echo -e "${BLUE}Replacing Integration/Middleware Certificates (30 certs)...${NC}"
+echo "Replacing Integration/Middleware Certificates (30 certs)..."
 
 # IBM MQ (10 certs)
 echo "  IBM MQ..."
@@ -335,7 +322,7 @@ replace_with_vault_cert "/opt/integration/b2b/certs/partner-a.pem" "/opt/integra
 replace_with_vault_cert "/opt/integration/b2b/certs/partner-b.pem" "/opt/integration/b2b/certs/partner-b-key.pem" "b2b-partner-b.howdens.local"
 
 echo ""
-echo -e "${BLUE}Replacing Infrastructure Certificates (10 certs)...${NC}"
+echo "Replacing Infrastructure Certificates (10 certs)..."
 
 # Load Balancers (5 certs)
 echo "  Load Balancers..."
@@ -354,25 +341,26 @@ replace_with_vault_cert "/opt/proxy/certs/backend.pem" "/opt/proxy/certs/backend
 replace_with_vault_cert "/opt/proxy/certs/ssl-offload.pem" "/opt/proxy/certs/ssl-offload-key.pem" "proxy-ssl.howdens.local"
 
 echo ""
-echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}Certificate Replacement Complete!${NC}"
-echo -e "${GREEN}========================================${NC}"
+echo "========================================"
+echo "Certificate Replacement Complete!"
+echo "========================================"
 echo ""
-echo -e "${GREEN}Total certificates replaced: ${CERT_COUNT}${NC}"
+echo "Total certificates replaced: ${CERT_COUNT}"
 echo ""
-echo -e "${YELLOW}All certificates are now:${NC}"
+echo "All certificates are now:"
 echo "  - Issued by Vault PKI"
 echo "  - 24-hour TTL (vs 287+ days)"
 echo "  - Strong crypto (RSA 2048, SHA-256)"
 echo "  - Quantum-safe ready"
 echo "  - Automatically rotated"
 echo ""
-echo -e "${YELLOW}Next Steps:${NC}"
+echo "Next Steps:"
 echo "1. Trigger PowerSC Quantum Safety scan to discover new certificates"
 echo "2. Capture 'AFTER' state showing improved metrics"
 echo "3. Compare before/after to demonstrate transformation"
 echo ""
-echo -e "${GREEN}Vault has successfully taken over certificate management!${NC}"
+echo "Vault has successfully taken over certificate management!"
 echo ""
 
 # Made with Bob
+
