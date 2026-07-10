@@ -1,0 +1,131 @@
+.page {
+  padding-bottom: 4rem;
+}
+
+.banner {
+  background: var(--cds-layer-01);
+  padding: 2rem 2rem 1.5rem;
+  border-bottom: 1px solid var(--cds-border-subtle-01);
+}
+
+.tag {
+  margin-bottom: 0.75rem;
+}
+
+.heading {
+  font-size: 2rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: var(--cds-text-primary);
+}
+
+.subheading {
+  font-size: 1rem;
+  color: var(--cds-text-secondary);
+  max-width: 64ch;
+  line-height: 1.6;
+}
+
+.metricsRow {
+  padding: 2rem 2rem 0;
+}
+
+.metricTile {
+  height: 100%;
+  padding: 1.25rem;
+}
+
+.metricValue {
+  font-size: 2.25rem;
+  font-weight: 600;
+  color: var(--cds-text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.metricLabel {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--cds-text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.metricSub {
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary);
+  line-height: 1.4;
+}
+
+.contextBlock {
+  padding: 2rem;
+}
+
+.sectionHeading {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: var(--cds-text-primary);
+}
+
+.body {
+  font-size: 0.9375rem;
+  color: var(--cds-text-secondary);
+  line-height: 1.6;
+}
+
+.actionPanel {
+  padding: 2rem 2rem 2rem 0;
+}
+
+.actionTile {
+  padding: 1.5rem;
+  height: 100%;
+}
+
+.actionHeading {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: var(--cds-text-primary);
+}
+
+.actionBody {
+  font-size: 0.875rem;
+  color: var(--cds-text-secondary);
+  line-height: 1.6;
+  margin-bottom: 1.25rem;
+}
+
+.actionButton {
+  margin-top: 0.5rem;
+  min-width: 14rem;
+}
+
+.progressBlock {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.nextActions {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.powerscLink {
+  font-size: 0.875rem;
+}
+
+.footerHint {
+  padding: 0.75rem 2rem;
+  background: var(--cds-layer-01);
+  border-top: 1px solid var(--cds-border-subtle-01);
+  font-size: 0.8125rem;
+  color: var(--cds-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}

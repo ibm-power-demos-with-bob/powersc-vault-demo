@@ -1,0 +1,27 @@
+@use '@carbon/react';
+@use '@carbon/react/scss/breakpoint' as *;
+@use '../components/Header/header';
+@use '../app/challenge/challenge-page';
+@use '../app/solution/solution-page';
+@use '../app/results/results-page';
+
+.cds--content {
+  margin-top: 3rem;
+  padding: 0;
+  background: var(--cds-background);
+}
+
+.cds--content .cds--css-grid {
+  max-width: 100%;
+  @include breakpoint(md) {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+}
+
+@media (min-width: 42rem) {
+  .cds--grid--no-gutter {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}

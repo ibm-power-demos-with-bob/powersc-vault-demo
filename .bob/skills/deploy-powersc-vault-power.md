@@ -373,3 +373,101 @@ ENDSSH
 | PowerSC scan shows 0 certificates | Scan path not configured | Repeat Step 5.3 and re-scan |
 | `CA bundle not found` in generate script | Different AIX Toolbox path | Check `openssl version -d` on AIX; update `CA_BUNDLE` in script |
 | Vault container disappeared | RHEL rebooted or OOM | Re-run Steps 3 and 4 |
+
+## Step 10: Deploy the Carbon UI (optional — for LOB-friendly demos)
+
+The `ui/` directory contains a Carbon Design System web app that wraps all demo operations
+in a three-page click-through interface. No command line is visible to the audience.
+
+The UI runs on the RHEL Vault host (pvm2) on port 3001. The Express backend runs on port 3002.
+Both must be started after Vault is running.
+
+### Deploy the UI on pvm2
+
+```bash
+ssh -i "$SSH_KEY" "$SSH_USER@$VAULT_HOST" << ENDSSH
+# Clone the repo (or git pull if already cloned)
+if [ ! -d ~/powersc-vault-demo ]; then
+  sudo dnf install -y git
+  git clone https://github.com/ibm-power-demos-with-bob/powersc-vault-demo.git ~/powersc-vault-demo
+else
+  cd ~/powersc-vault-demo && git pull
+fi
+
+cd ~/powersc-vault-demo/ui
+
+# Install Node.js via dnf (NOT NodeSource — ppc64le not supported there)
+command -v node || sudo dnf install -y nodejs npm
+
+# Install dependencies
+npm install
+
+# Build Next.js app
+npm run build
+ENDSSH
+```
+
+### Configure .env.local
+
+```bash
+ssh -i "$SSH_KEY" "$SSH_USER@$VAULT_HOST" "cat > ~/powersc-vault-demo/ui/.env.local << EOF
+AIX_HOST=${AIX_HOST}
+AIX_USER=cecuser
+AIX_SSH_KEY_PATH=/home/cecuser/.ssh/techzone-key.pem
+VAULT_ADDR=http://127.0.0.1:8200
+VAULT_TOKEN=myroot
+VAULT_ADDR_EXTERNAL=http://${VAULT_HOST}:8200
+POWERSC_URL=https://${POWERSC_HOST}
+NEXT_PUBLIC_POWERSC_URL=https://${POWERSC_HOST}
+API_PORT=3002
+EOF"
+```
+
+Also copy the TechZone SSH key to the expected path on pvm2:
+```bash
+scp -i "$SSH_KEY" "$SSH_KEY" "$SSH_USER@$VAULT_HOST:/home/cecuser/.ssh/techzone-key.pem"
+ssh -i "$SSH_KEY" "$SSH_USER@$VAULT_HOST" "chmod 600 /home/cecuser/.ssh/techzone-key.pem"
+```
+
+### Open firewall ports and start services
+
+```bash
+ssh -i "$SSH_KEY" "$SSH_USER@$VAULT_HOST" << 'ENDSSH'
+# Open UI ports
+sudo firewall-cmd --permanent --add-port=3001/tcp
+sudo firewall-cmd --permanent --add-port=3002/tcp
+sudo firewall-cmd --reload
+
+cd ~/powersc-vault-demo/ui
+
+# Start Express backend
+nohup npm run server > ~/server.log 2>&1 &
+echo "Backend PID: $!"
+
+# Start Next.js frontend
+nohup npm start > ~/ui.log 2>&1 &
+echo "Frontend PID: $!"
+
+sleep 3
+echo "Checking services..."
+curl -s http://localhost:3002/health && echo " — backend OK"
+curl -s http://localhost:3001 | head -c 100 && echo " — frontend OK"
+ENDSSH
+```
+
+### Access the UI
+
+Open in browser: `http://<VAULT_HOST>:3001`
+
+The three pages:
+- **The Challenge** (`/`) — click "Generate Demo Environment" → deploys 150 old certificates to AIX
+- **The Solution** (`/solution`) — click "Deploy Vault Certificates" → Vault replaces all 150 certs
+- **The Results** (`/results`) — before/after table + ROI calculator
+
+### Stopping / restarting the UI
+
+```bash
+ssh -i "$SSH_KEY" "$SSH_USER@$VAULT_HOST" "pkill -f 'node server/index' ; pkill -f 'next start'"
+# Then re-run the start commands above
+```
+

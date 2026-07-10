@@ -1,0 +1,149 @@
+.page {
+  padding-bottom: 4rem;
+}
+
+.banner {
+  background: var(--cds-layer-01);
+  padding: 2rem 2rem 1.5rem;
+  border-bottom: 1px solid var(--cds-border-subtle-01);
+}
+
+.tag { margin-bottom: 0.75rem; }
+
+.heading {
+  font-size: 2rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: var(--cds-text-primary);
+}
+
+.subheading {
+  font-size: 1rem;
+  color: var(--cds-text-secondary);
+  max-width: 64ch;
+  line-height: 1.6;
+}
+
+.tilesRow {
+  padding: 2rem 2rem 0;
+}
+
+.valueTile {
+  height: 100%;
+  padding: 1.25rem;
+}
+
+.tileIcon {
+  font-size: 1.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.tileHeading {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--cds-text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.tileBody {
+  font-size: 0.8125rem;
+  color: var(--cds-text-secondary);
+  line-height: 1.5;
+}
+
+.actionPanel {
+  padding: 2rem;
+}
+
+.actionTile {
+  padding: 1.5rem;
+  height: 100%;
+}
+
+.actionHeading {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: var(--cds-text-primary);
+}
+
+.actionBody {
+  font-size: 0.875rem;
+  color: var(--cds-text-secondary);
+  line-height: 1.6;
+  margin-bottom: 1.25rem;
+}
+
+.actionButton {
+  margin-top: 0.5rem;
+  min-width: 14rem;
+}
+
+.progressBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.progressIndicator {
+  margin-top: 0.5rem;
+}
+
+.nextActions {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.powerscLink { font-size: 0.875rem; }
+
+.archPanel {
+  padding: 2rem 2rem 2rem 0;
+}
+
+.sectionHeading {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: var(--cds-text-primary);
+}
+
+.archDiagram {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.archNode {
+  background: var(--cds-layer-02);
+  border: 1px solid var(--cds-border-subtle-01);
+  border-radius: 4px;
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.8125rem;
+  color: var(--cds-text-secondary);
+  min-width: 8rem;
+
+  strong {
+    color: var(--cds-text-primary);
+    font-size: 0.875rem;
+  }
+}
+
+.archArrow {
+  color: var(--cds-text-secondary);
+  font-size: 1.25rem;
+}
+
+.archNote {
+  font-size: 0.8125rem;
+  color: var(--cds-text-secondary);
+  line-height: 1.5;
+}
