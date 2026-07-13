@@ -1,29 +1,30 @@
 'use client';
 import { useState } from 'react';
-import { Button, InlineLoading, InlineNotification, Link } from '@carbon/react';
-import { Scan, Launch } from '@carbon/icons-react';
+import {
+  Button,
+  InlineLoading,
+  InlineNotification,
+  Link,
+} from '@carbon/react';
+import { Launch, Scan } from '@carbon/icons-react';
 
-/**
- * ScanPanel — triggers a PowerSC Quantum Safety scan via the backend API.
- *
- * The backend route makes a best-effort attempt to call the PowerSC REST API.
- * If the API is unreachable or credentials are not set, it returns mode:'manual'
- * and this component shows a direct link to the PowerSC UI instead.
- *
- * Props:
- *   label      — button label (e.g. "Run BEFORE Scan")
- *   description — short explanation shown under the button
- *   powerscUrl  — direct link to PowerSC UI (NEXT_PUBLIC_POWERSC_URL)
- *   onComplete  — called when scan is confirmed complete (or presenter confirms manual)
- */
+// ScanPanel — triggers a PowerSC Quantum Safety scan and displays the live result.
+//
+// Props:
+//   label        — button label (e.g. "Run BEFORE Scan")
+//   description  — explanatory text shown above the button
+//   powerscUrl   — direct link to the PowerSC UI
+//   onComplete   — callback({ complianceScore, weakCertificates, scanTime }) when scan finishes
+
 export default function ScanPanel({ label, description, powerscUrl, onComplete }) {
-  const [status, setStatus] = useState('idle'); // idle | requesting | polling | manual | complete | error
+  const [status, setStatus] = useState('idle'); // idle | scanning | complete | manual | error
   const [message, setMessage] = useState('');
-  const [pollUrl, setPollUrl] = useState(null);
+  const [result, setResult] = useState(null);
 
   async function handleScan() {
-    setStatus('requesting');
-    setMessage('Requesting scan…');
+    setStatus('scanning');
+    setMessage('Connecting to PowerSC…');
+    setResult(null);
 
     try {
       const res = await fetch('/api/powersc/scan', {
@@ -39,122 +40,144 @@ export default function ScanPanel({ label, description, powerscUrl, onComplete }
         return;
       }
 
-      // API scan triggered — poll for completion
-      setPollUrl(data.pollUrl);
-      setStatus('polling');
-      setMessage('Scan running…');
-      pollForCompletion(data.pollUrl);
+      if (data.mode === 'timeout') {
+        // Scan timed out but we still have data — treat as complete with a warning
+        setResult(data);
+        setStatus('complete');
+        setMessage('Scan timed out — showing last available results.');
+        if (onComplete) onComplete(data);
+        return;
+      }
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || data.error || 'Scan failed');
+      }
+
+      setResult(data);
+      setStatus('complete');
+      setMessage('');
+      if (onComplete) onComplete(data);
+
     } catch (err) {
       setStatus('error');
       setMessage(err.message);
     }
   }
 
-  async function pollForCompletion(url) {
-    const maxAttempts = 24; // 2-minute timeout at 5s intervals
-    let attempts = 0;
-
-    const tick = async () => {
-      attempts++;
-      try {
-        const res = await fetch(url);
-        const data = await res.json();
-
-        if (data.mode === 'manual' || data.status === 'unknown') {
-          setStatus('manual');
-          setMessage('Unable to poll scan status — check PowerSC UI for results.');
-          return;
-        }
-
-        if (data.status === 'completed') {
-          setStatus('complete');
-          setMessage('');
-          onComplete?.();
-          return;
-        }
-
-        if (attempts >= maxAttempts) {
-          setStatus('manual');
-          setMessage('Scan is taking longer than expected. Check PowerSC UI for status.');
-          return;
-        }
-
-        setTimeout(tick, 5000);
-      } catch {
-        setStatus('manual');
-        setMessage('Lost contact with backend. Check PowerSC UI directly.');
-      }
-    };
-
-    setTimeout(tick, 5000);
-  }
-
   return (
-    <div style={{ marginTop: '1rem' }}>
-      {status === 'idle' && (
-        <>
-          <p style={{ fontSize: '0.875rem', color: 'var(--cds-text-secondary)', marginBottom: '0.75rem', lineHeight: 1.5 }}>
-            {description}
-          </p>
-          <Button renderIcon={Scan} onClick={handleScan} kind="secondary">
-            {label}
-          </Button>
-        </>
+    <div style={{ marginTop: '1.25rem' }}>
+      {description && (
+        <p style={{ fontSize: '0.875rem', color: 'var(--cds-text-secondary)', marginBottom: '0.75rem', lineHeight: 1.5 }}>
+          {description}
+        </p>
       )}
 
-      {(status === 'requesting' || status === 'polling') && (
-        <InlineLoading
-          description={message}
-          status="active"
-        />
+      {status === 'idle' && (
+        <Button renderIcon={Scan} onClick={handleScan} kind="secondary" size="md">
+          {label}
+        </Button>
+      )}
+
+      {status === 'scanning' && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <InlineLoading description={message} status="active" />
+        </div>
+      )}
+
+      {status === 'complete' && result && (
+        <div>
+          {message && (
+            <InlineNotification
+              kind="warning"
+              title="Note —"
+              subtitle={message}
+              hideCloseButton
+              style={{ marginBottom: '0.75rem' }}
+            />
+          )}
+          <div style={{
+            background: 'var(--cds-layer-01)',
+            border: '1px solid var(--cds-border-subtle-01)',
+            borderLeft: '3px solid var(--cds-support-success)',
+            padding: '1rem 1.25rem',
+            marginBottom: '0.75rem',
+          }}>
+            <p style={{ fontSize: '0.75rem', color: 'var(--cds-text-secondary)', marginBottom: '0.5rem' }}>
+              PowerSC Quantum Safety scan complete
+            </p>
+            <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
+              <div>
+                <p style={{ fontSize: '1.75rem', fontWeight: 600, color: 'var(--cds-support-success)', lineHeight: 1 }}>
+                  {result.complianceScore !== null ? `${result.complianceScore}%` : '—'}
+                </p>
+                <p style={{ fontSize: '0.75rem', color: 'var(--cds-text-secondary)' }}>Compliance Score</p>
+              </div>
+              <div>
+                <p style={{ fontSize: '1.75rem', fontWeight: 600, color: result.weakCertificates > 0 ? 'var(--cds-support-error)' : 'var(--cds-support-success)', lineHeight: 1 }}>
+                  {result.weakCertificates}
+                </p>
+                <p style={{ fontSize: '0.75rem', color: 'var(--cds-text-secondary)' }}>Weak Certificates</p>
+              </div>
+              <div>
+                <p style={{ fontSize: '1.75rem', fontWeight: 600, color: 'var(--cds-text-primary)', lineHeight: 1 }}>
+                  {result.strongCertificates + (result.quantumSafeCertificates || 0)}
+                </p>
+                <p style={{ fontSize: '0.75rem', color: 'var(--cds-text-secondary)' }}>Strong / Quantum-Safe</p>
+              </div>
+            </div>
+            <p style={{ fontSize: '0.6875rem', color: 'var(--cds-text-placeholder)', marginTop: '0.75rem' }}>
+              Scan time: {result.scanTime ? new Date(result.scanTime).toLocaleTimeString() : '—'}
+            </p>
+          </div>
+          {powerscUrl && powerscUrl !== '#' && (
+            <Link href={powerscUrl} target="_blank" renderIcon={Launch} style={{ fontSize: '0.875rem' }}>
+              Open PowerSC — view full report
+            </Link>
+          )}
+        </div>
       )}
 
       {status === 'manual' && (
-        <>
+        <div>
           <InlineNotification
             kind="info"
-            title="Trigger scan manually —"
-            subtitle={message || 'Open PowerSC UI and run a Quantum Safety full scan on the AIX client.'}
+            title="Manual scan required —"
+            subtitle={message}
             hideCloseButton
+            style={{ marginBottom: '0.75rem' }}
           />
           {powerscUrl && powerscUrl !== '#' && (
-            <Link
-              href={powerscUrl}
-              target="_blank"
-              renderIcon={Launch}
-              style={{ marginTop: '0.75rem', display: 'inline-flex', fontSize: '0.875rem' }}>
-              Open PowerSC UI
+            <Link href={powerscUrl} target="_blank" renderIcon={Launch} style={{ fontSize: '0.875rem' }}>
+              Open PowerSC UI to trigger scan
             </Link>
           )}
           <div style={{ marginTop: '0.75rem' }}>
-            <Button kind="ghost" size="sm" onClick={() => { setStatus('complete'); onComplete?.(); }}>
-              ✓ I&apos;ve triggered the scan — continue
+            <Button kind="ghost" size="sm" onClick={() => { setStatus('idle'); setMessage(''); }}>
+              Try API again
             </Button>
+            {onComplete && (
+              <Button kind="ghost" size="sm" onClick={() => onComplete({ manual: true })}
+                style={{ marginLeft: '0.5rem' }}>
+                Mark as done (manual)
+              </Button>
+            )}
           </div>
-        </>
-      )}
-
-      {status === 'complete' && (
-        <InlineNotification
-          kind="success"
-          title="Scan complete —"
-          subtitle="PowerSC has finished the Quantum Safety scan. View results in the PowerSC UI."
-          hideCloseButton
-        />
+        </div>
       )}
 
       {status === 'error' && (
-        <>
+        <div>
           <InlineNotification
             kind="error"
-            title="Scan request failed —"
+            title="Scan error —"
             subtitle={message}
             hideCloseButton
+            style={{ marginBottom: '0.75rem' }}
           />
-          <Button kind="ghost" size="sm" onClick={() => setStatus('idle')} style={{ marginTop: '0.5rem' }}>
+          <Button kind="ghost" size="sm" onClick={() => { setStatus('idle'); setMessage(''); }}>
             Try again
           </Button>
-        </>
+        </div>
       )}
     </div>
   );

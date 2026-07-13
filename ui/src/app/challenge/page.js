@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Grid,
   Column,
@@ -15,11 +15,12 @@ import { Launch, Certificate, Warning, ArrowRight, User } from '@carbon/icons-re
 import ScanPanel from '../../components/ScanPanel/ScanPanel';
 import styles from './challenge-page.module.scss';
 
-const METRICS_BEFORE = [
-  { value: '150', label: 'Certificates to Manage', sub: 'Across SAP, Oracle, Integration, Infrastructure' },
-  { value: '15+', label: 'Years Old (Average)', sub: 'Issued 2008–2011, still in production' },
-  { value: '~67%', label: 'Compliance Score', sub: 'PowerSC Quantum Safety baseline' },
-  { value: '0', label: 'Quantum-Safe Ready', sub: 'No short-lived certificates in estate' },
+// Static fallback values — shown before PowerSC summary loads
+const METRICS_DEFAULT = [
+  { key: 'certs',      value: '150',  label: 'Certificates to Manage', sub: 'Across SAP, Oracle, Integration, Infrastructure' },
+  { key: 'age',        value: '15+',  label: 'Years Old (Average)',     sub: 'Issued 2008–2011, still in production' },
+  { key: 'compliance', value: '~67%', label: 'Compliance Score',        sub: 'PowerSC Quantum Safety baseline' },
+  { key: 'qs',         value: '0',    label: 'Quantum-Safe Ready',      sub: 'No short-lived certificates in estate' },
 ];
 
 export default function ChallengePage() {
@@ -28,6 +29,30 @@ export default function ChallengePage() {
   const [message, setMessage] = useState('');
   const [certsDeployed, setCertsDeployed] = useState(0);
   const [beforeScanDone, setBeforeScanDone] = useState(false);
+  // Live metrics from PowerSC — null until loaded
+  const [liveMetrics, setLiveMetrics] = useState(null);
+
+  // Fetch the current summary on mount so tiles show live data immediately
+  useEffect(() => {
+    fetch('/api/powersc/summary')
+      .then(r => r.json())
+      .then(d => { if (d.complianceScore !== null && d.complianceScore !== undefined) setLiveMetrics(d); })
+      .catch(() => {}); // silently ignore — static fallback stays
+  }, []);
+
+  // Called by ScanPanel when a scan completes — update live metrics
+  function handleScanComplete(data) {
+    if (data && data.complianceScore !== undefined) setLiveMetrics(data);
+    setBeforeScanDone(true);
+  }
+
+  // Build display metrics — replace compliance + qs tiles with live values when available
+  const metrics = METRICS_DEFAULT.map(m => {
+    if (!liveMetrics) return m;
+    if (m.key === 'compliance') return { ...m, value: `${liveMetrics.complianceScore}%`, sub: 'PowerSC Quantum Safety (live)' };
+    if (m.key === 'qs') return { ...m, value: String(liveMetrics.quantumSafeCertificates ?? 0) };
+    return m;
+  });
 
   async function handleGenerateCerts() {
     setStatus('running');
@@ -82,7 +107,7 @@ export default function ChallengePage() {
       {/* Metric tiles */}
       <Column lg={16} md={8} sm={4} className={styles.metricsRow}>
         <Grid narrow>
-          {METRICS_BEFORE.map((m, i) => (
+          {metrics.map((m, i) => (
             <Column key={i} lg={4} md={4} sm={4}>
               <Tile className={styles.metricTile}>
                 <p className={styles.metricValue}>{m.value}</p>
@@ -162,7 +187,7 @@ export default function ChallengePage() {
                 label="Run BEFORE Scan"
                 description="Trigger a PowerSC Quantum Safety scan now to capture the BEFORE state — 150 old certificates, weak crypto, low compliance. The scan takes 30–90 seconds."
                 powerscUrl={powerscUrl}
-                onComplete={() => setBeforeScanDone(true)}
+                onComplete={handleScanComplete}
               />
               {beforeScanDone && (
                 <div className={styles.nextActions}>

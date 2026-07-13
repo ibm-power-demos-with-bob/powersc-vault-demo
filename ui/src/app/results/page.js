@@ -26,29 +26,51 @@ const COMPARISON = [
   { metric: 'Weakest Crypto', before: 'SHA-1, RSA 1024', after: 'SHA-256, RSA 2048', delta: 'Eliminated' },
 ];
 
-const AFTER_METRICS = [
-  { value: '24h', label: 'Max Certificate Age', sub: 'Down from 15+ years' },
-  { value: '~98%', label: 'Compliance Score', sub: 'Up from ~67%' },
-  { value: '150', label: 'Vault-Issued Certs', sub: 'All with 24-hour TTL' },
-  { value: '0', label: 'Manual Steps Required', sub: 'Fully automated rotation' },
+// Static fallback values — shown before PowerSC summary loads
+const AFTER_METRICS_DEFAULT = [
+  { key: 'age',        value: '24h',   label: 'Max Certificate Age', sub: 'Down from 15+ years' },
+  { key: 'compliance', value: '~98%',  label: 'Compliance Score',    sub: 'Up from ~67%' },
+  { key: 'vaultcerts', value: '150',   label: 'Vault-Issued Certs',  sub: 'All with 24-hour TTL' },
+  { key: 'manual',     value: '0',     label: 'Manual Steps Required', sub: 'Fully automated rotation' },
 ];
 
 export default function ResultsPage() {
   const [outagesPerYear, setOutagesPerYear] = useState(3);
   const [hoursPerMonth, setHoursPerMonth] = useState(8);
   const [roi, setRoi] = useState(null);
+  // Live metrics from PowerSC
+  const [liveMetrics, setLiveMetrics] = useState(null);
 
+  // Fetch current summary on mount
   useEffect(() => {
-    // Simple client-side ROI calculation — no API call needed
-    const outageHours = outagesPerYear * 4; // avg 4h per outage
-    const avoidedDowntimeCost = outageHours * 25000; // £25k/hr downtime estimate
-    const manualHoursSaved = hoursPerMonth * 12 * 150; // £150/hr staff cost
+    fetch('/api/powersc/summary')
+      .then(r => r.json())
+      .then(d => { if (d.complianceScore !== null && d.complianceScore !== undefined) setLiveMetrics(d); })
+      .catch(() => {});
+  }, []);
+
+  // ROI calculation
+  useEffect(() => {
+    const outageHours = outagesPerYear * 4;
+    const avoidedDowntimeCost = outageHours * 25000;
+    const manualHoursSaved = hoursPerMonth * 12 * 150;
     setRoi({
       avoidedDowntime: avoidedDowntimeCost,
       staffTimeSaved: manualHoursSaved,
       total: avoidedDowntimeCost + manualHoursSaved,
     });
   }, [outagesPerYear, hoursPerMonth]);
+
+  // Build display metrics — replace compliance tile with live value when available
+  const afterMetrics = AFTER_METRICS_DEFAULT.map(m => {
+    if (!liveMetrics) return m;
+    if (m.key === 'compliance') return {
+      ...m,
+      value: `${liveMetrics.complianceScore}%`,
+      sub: 'PowerSC Quantum Safety (live)',
+    };
+    return m;
+  });
 
   const powerscUrl = process.env.NEXT_PUBLIC_POWERSC_URL || '#';
 
@@ -68,7 +90,7 @@ export default function ResultsPage() {
       {/* After metrics */}
       <Column lg={16} md={8} sm={4} className={styles.metricsRow}>
         <Grid narrow>
-          {AFTER_METRICS.map((m, i) => (
+          {afterMetrics.map((m, i) => (
             <Column key={i} lg={4} md={4} sm={4}>
               <Tile className={styles.metricTile}>
                 <p className={styles.metricValue}>{m.value}</p>
