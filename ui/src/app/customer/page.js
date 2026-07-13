@@ -51,7 +51,7 @@ const CUSTOMER_CONTEXT = {
     'trade customers. A certificate-related outage preventing depot access to SAP ' +
     'is directly equivalent to closing depots.',
   keyFacts: [
-    'UK's leading trade-only kitchen supplier — 900+ depots',
+    "UK\u2019s leading trade-only kitchen supplier \u2014 900+ depots",
     'Six IBM Power E980 servers running SAP in production landscape',
     '100+ key suppliers exchanging verified data through certificate-protected channels',
     'Distributed depot network — each depot depends on certificate-based SAP connectivity',
