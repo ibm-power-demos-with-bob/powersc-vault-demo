@@ -86,7 +86,11 @@ echo "────────────────────────�
 [[ -z "$VAULT_HOST" ]]   && fail "VAULT_HOST is required. Pass --vault-host <fqdn> or set the env var."
 [[ -z "$AIX_HOST" ]]     && fail "AIX_HOST is required. Pass --aix-host <fqdn> or set the env var."
 [[ -z "$POWERSC_URL" ]]  && warn "POWERSC_URL not set — PowerSC link in UI will be disabled."
-[[ ! -f "$SSH_KEY" ]]    && fail "SSH key not found at $SSH_KEY. Pass --ssh-key <path>."
+[[ ! -f "$SSH_KEY" ]]    && fail "SSH key not found at $SSH_KEY.
+  The TechZone private key must be present on this host (pvm2) before running setup.
+  Copy it from your laptop first:
+    scp -i <local-key> <local-key> cecuser@${VAULT_HOST}:${SSH_KEY}
+  Then re-run setup.sh."
 
 # Derive AIX short hostname (first component of FQDN) for PowerSC endpoint reference
 AIX_HOSTNAME="${AIX_HOST%%.*}"

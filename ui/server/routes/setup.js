@@ -21,7 +21,7 @@ router.post('/generate-certificates', async (req, res) => {
     req.io.emit('setup:status', { step: 'Connecting to AIX client…', progress: 10 });
 
     // Transfer the script and run it — script path relative to where it lives in the repo
-    const scriptSrc = path.resolve(__dirname, '../../scripts/generate-old-certificates.sh');
+    const scriptSrc = path.resolve(__dirname, '../../../scripts/generate-old-certificates.sh');
     const remotePath = `/home/${aixUser}/generate-old-certificates.sh`;
 
     await runScriptOnAIX({
