@@ -218,6 +218,9 @@ can be adapted for their customer.
 | Today | **PowerSC scan buttons added to UI** — `ScanPanel` component. Challenge page: BEFORE scan after cert deploy. Solution page: AFTER scan after cert replacement. Best-effort API call; manual fallback always available. |
 | Today | **`scripts/setup.sh` written** — end-to-end infrastructure deployment in one command. Covers Podman, fapolicyd, Vault container, systemd service, PKI config, firewall, Node, git clone, npm build, `.env.local`, service start. Stops before any demo cert operations — those are UI buttons. |
 | Today | **Design decision recorded** — setup.sh boundary: infrastructure only. Generate certs, BEFORE scan, Vault replacement, AFTER scan are demo actions, not deployment actions. All four are UI buttons. |
+| Today | **Discovery 12 — Node 16 incompatible with Express 4.21+:** Fresh RHEL 9 ppc64le installs Node 16.20.2 by default. Express 4.21 requires Node ≥18 (transitive deps `es-errors`, `iconv-lite`, `side-channel` not resolvable on Node 16). Fix: `sudo dnf module enable -y nodejs:20` before `dnf install nodejs`. NodeSource does not support ppc64le — RHEL AppStream module stream is always the correct path. Node 20.20.2 confirmed working on p1294-pvm2. |
+| Today | **Discovery 13 — dotenv path resolves relative to cwd, not script location:** `require('dotenv').config({ path: '../.env.local' })` silently loaded nothing when backend was started via `nohup npm run server` from `ui/`. Fix: `require('path').join(__dirname, '../.env.local')`. Symptom: all env vars show `(not set)` in server startup log despite `.env.local` existing. |
+| Today | **Deployment confirmed on p1294** — both services healthy: backend `{"status":"ok","port":"3002"}`, frontend serving HTML on port 3001. All env vars loading correctly. Node 20.20.2, npm 10.8.2. |
 
 ---
 

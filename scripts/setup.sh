@@ -256,11 +256,28 @@ ok "Firewall ports open: 8200 (Vault), 3001 (UI), 3002 (API)"
 # ── Step 7: Install Node.js ───────────────────────────────────────────────────
 step "Step 7: Install Node.js"
 
-# Use dnf — NOT NodeSource, which does not support ppc64le
-if command -v node &>/dev/null; then
-  ok "Node.js already installed: $(node --version)"
+# ppc64le constraint: NodeSource does not support ppc64le.
+# Use the RHEL AppStream dnf module stream instead.
+#
+# RHEL 9 AppStream ships Node 16 by default. Express 4.21+ and its transitive
+# dependencies (es-errors, iconv-lite, side-channel) require Node >= 18.
+# The nodejs:20 module stream is available on RHEL 9 ppc64le and is the
+# correct version to enable. Do NOT use nodejs:18 (not consistently available).
+# Do NOT use nodejs:22 (TypeScript 5.x is not yet compatible).
+#
+# Sequence matters: enable the module stream BEFORE installing nodejs.
+# If nodejs 16 is already installed, dnf will upgrade it in the same transaction.
+
+NODE_MAJOR=$(node --version 2>/dev/null | sed 's/v//;s/\..*//')
+if [[ "$NODE_MAJOR" -ge 20 ]] 2>/dev/null; then
+  ok "Node.js already at v$(node --version) — no upgrade needed"
 else
-  info "Installing nodejs via dnf (RHEL AppStream — ppc64le compatible)…"
+  if [[ -n "$NODE_MAJOR" ]]; then
+    info "Node.js $(node --version) found — upgrading to Node 20 via module stream…"
+  else
+    info "Node.js not found — installing Node 20 via dnf module stream…"
+  fi
+  sudo dnf module enable -y nodejs:20
   sudo dnf install -y nodejs npm
   ok "Node.js installed: $(node --version)"
 fi

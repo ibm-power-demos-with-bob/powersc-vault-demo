@@ -51,6 +51,7 @@ and provide governance-ready compliance reporting.
 | `powersc-vault-story-builder` skill | Tells Bob how to help you customise the story for your customer |
 | `ibm-power-vault-podman` skill | Vault on ppc64le via rootless Podman + fapolicyd remediation |
 | `ibm-power-aix-scripting` skill | AIX-compatible scripting rules (curl, sed, no jq) |
+| `nodejs-on-rhel-ppc64le` skill | Node.js on IBM Power RHEL — correct version, dnf module stream, fapolicyd npm flags, dotenv path fix |
 | IBM Power Security Demo mode | Seller persona — knows the story, drives deployment |
 | `scripts/generate-old-certificates.sh` | Deploys 150 synthetic old certificates to AIX |
 | `scripts/replace-with-vault-certificates.sh` | Replaces all 150 with Vault-issued 24h certificates |
