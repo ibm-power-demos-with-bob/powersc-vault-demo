@@ -94,14 +94,29 @@ export default function ChallengePage() {
         </Grid>
       </Column>
 
+      {/* Compliance score explainer */}
+      <Column lg={16} md={8} sm={4} className={styles.scoreNote}>
+        <p>
+          <strong>What is the Compliance Score?</strong>{' '}
+          IBM PowerSC&apos;s Quantum Safety scan evaluates every certificate in the estate against
+          cryptographic criteria — key algorithm, key length, hash algorithm, and certificate
+          age. The score is the percentage of certificates that pass all criteria. A certificate
+          using SHA-1, RSA-1024, or with a multi-year lifetime fails. One issued by Vault with
+          RSA-2048, SHA-256, and a 24-hour TTL passes. This is IBM&apos;s measure of how
+          quantum-resilient your certificate estate is today.
+        </p>
+      </Column>
+
       {/* Context */}
       <Column lg={8} md={8} sm={4} className={styles.contextBlock}>
         <h3 className={styles.sectionHeading}>Why This Matters</h3>
         <p className={styles.body}>
-          In August 2025, attackers exploited a PKI/certificate infrastructure at a major UK
-          manufacturer. The result: a five-week production shutdown, £1.9 billion in losses,
-          and over 5,000 supplier businesses affected. The attack vector was certificate-based
-          lateral movement — exactly the risk profile that manual certificate management creates.
+          In August 2025, attackers exploited JLR&apos;s PKI infrastructure — rogue certificates
+          enabled lateral movement across their network, halting production for five weeks.
+          Total UK economic damage: £1.9 billion across JLR and 5,000+ supply chain businesses.
+          The Cyber Monitoring Centre classified it as the costliest cyber attack in UK history.
+          The attack vector was certificate-based lateral movement — exactly the risk profile
+          that manual certificate management creates.
         </p>
         <p className={styles.body} style={{ marginTop: '1rem' }}>
           This demo shows how IBM PowerSC identifies the problem — and how HashiCorp Vault

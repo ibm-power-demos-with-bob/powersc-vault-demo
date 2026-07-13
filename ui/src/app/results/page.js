@@ -60,8 +60,8 @@ export default function ResultsPage() {
         <h1 className={styles.heading}>The Results</h1>
         <p className={styles.subheading}>
           PowerSC now shows 150 certificates with a 24-hour age, modern cryptography, and full
-          quantum-safety compliance. The attack surface that enabled the JLR-style breach no
-          longer exists.
+          quantum-safety compliance. The attack surface that enabled the JLR-style breach —
+          old, manually-managed certificates — no longer exists.
         </p>
       </Column>
 
@@ -78,6 +78,19 @@ export default function ResultsPage() {
             </Column>
           ))}
         </Grid>
+      </Column>
+
+      {/* Compliance score explainer */}
+      <Column lg={16} md={8} sm={4} className={styles.scoreNote}>
+        <p>
+          <strong>What is the Compliance Score?</strong>{' '}
+          IBM PowerSC&apos;s Quantum Safety scan grades every certificate against cryptographic
+          criteria — key algorithm, key length, hash algorithm, and certificate age. The score
+          is the percentage that pass. In the BEFORE state, ~67% passed: most old certificates
+          used weak SHA-1 or RSA-1024. After Vault replacement, ~98% pass: all 150 Vault-issued
+          certificates use RSA-2048 + SHA-256 with a 24-hour TTL. The residual ~2% are system
+          certificates outside the demo scope.
+        </p>
       </Column>
 
       {/* Before/After comparison table */}

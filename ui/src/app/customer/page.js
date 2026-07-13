@@ -110,13 +110,15 @@ export default function CustomerPage() {
         <Warning size={20} className={styles.warningIcon} />
         <div>
           <p className={styles.jlrHeadline}>
-            August 2025 — Jaguar Land Rover: £1.9 billion lost to a certificate attack
+            August 2025 — Jaguar Land Rover: £1.9 billion in total UK economic damage — the costliest cyber attack in UK history
           </p>
           <p className={styles.jlrBody}>
             The Scattered Lapsus Hunters exploited JLR&apos;s PKI infrastructure — generating rogue
             internal certificates that allowed lateral movement from corporate IT into operational
-            technology systems. The result: a five-week production shutdown across flagship UK plants,
-            affecting 5,000+ businesses in the supply chain.{' '}
+            technology systems. The result: a five-week production shutdown across flagship UK plants.
+            More than half of the £1.9bn was borne by JLR itself; the remainder fell on 5,000+
+            businesses in the supply chain and the local economy. Classified as a Category 3 systemic
+            event by the Cyber Monitoring Centre.{' '}
             <strong>The attack vector was certificate-based. The root cause was manual PKI management.</strong>
           </p>
         </div>
@@ -158,11 +160,12 @@ export default function CustomerPage() {
       <Column lg={6} md={8} sm={4} className={styles.talkingPointBox}>
         <h4 className={styles.tpHeading}>Opening talking point</h4>
         <p className={styles.tpBody}>
-          &ldquo;In August 2025, Jaguar Land Rover lost £1.9 billion when attackers used rogue
-          certificates to move laterally across their infrastructure and shut down production for
-          five weeks. 5,000 businesses in their supply chain were affected. The attack vector
-          was PKI — specifically, old, manually-managed certificate infrastructure.
-          That risk profile is not unique to automotive.&rdquo;
+          &ldquo;In August 2025, attackers used rogue certificates to move laterally across
+          JLR&apos;s infrastructure and shut down production for five weeks. The total UK economic
+          damage was £1.9 billion — the costliest cyber attack in UK history according to the
+          Cyber Monitoring Centre. JLR bore over half; 5,000 businesses in their supply chain
+          bore the rest. The attack vector was PKI — specifically, old, manually-managed
+          certificate infrastructure. That risk profile is not unique to automotive.&rdquo;
         </p>
         <p className={styles.tpTransition}>
           → <em>Then pivot to your customer&apos;s specific parallel (Section B below).</em>

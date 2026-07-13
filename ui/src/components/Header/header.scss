@@ -4,3 +4,15 @@
   width: 100%;
   z-index: 1000;
 }
+
+// Force horizontal nav visible at all viewport widths — this is a demo app,
+// always shown on a desktop/laptop screen. Carbon hides HeaderNavigation below
+// the lg breakpoint (1056px) in favour of the hamburger side-nav; override that.
+.cds--header__nav {
+  display: block !important;
+}
+
+// Hide the hamburger menu button — nav is always visible, button is redundant
+.cds--header__menu-trigger {
+  display: none !important;
+}
