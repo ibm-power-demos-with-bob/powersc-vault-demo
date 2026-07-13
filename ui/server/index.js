@@ -1,4 +1,4 @@
-require('dotenv').config({ path: '../.env.local' });
+require('dotenv').config({ path: require('path').join(__dirname, '../.env.local') });
 
 const express = require('express');
 const http = require('http');
