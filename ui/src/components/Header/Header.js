@@ -29,6 +29,9 @@ const DemoHeader = () => (
           <HeaderName prefix="IBM">PowerSC + Vault Demo</HeaderName>
         </Link>
         <HeaderNavigation aria-label="Demo navigation">
+          <Link href="/customer" passHref legacyBehavior>
+            <HeaderMenuItem>Customer Context</HeaderMenuItem>
+          </Link>
           <Link href="/" passHref legacyBehavior>
             <HeaderMenuItem>The Challenge</HeaderMenuItem>
           </Link>
@@ -45,6 +48,9 @@ const DemoHeader = () => (
           isPersistent={false}>
           <SideNavItems>
             <HeaderSideNavItems>
+              <Link href="/customer" passHref legacyBehavior>
+                <HeaderMenuItem>Customer Context</HeaderMenuItem>
+              </Link>
               <Link href="/" passHref legacyBehavior>
                 <HeaderMenuItem>The Challenge</HeaderMenuItem>
               </Link>

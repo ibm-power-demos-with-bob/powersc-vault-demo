@@ -8,6 +8,7 @@ const { Server } = require('socket.io');
 const setupRoutes = require('./routes/setup');
 const vaultRoutes = require('./routes/vault');
 const metricsRoutes = require('./routes/metrics');
+const powerscRoutes = require('./routes/powersc');
 
 const app = express();
 const server = http.createServer(app);
@@ -45,6 +46,7 @@ app.use((req, _res, next) => {
 app.use('/api/setup', setupRoutes);
 app.use('/api/vault', vaultRoutes);
 app.use('/api/metrics', metricsRoutes);
+app.use('/api/powersc', powerscRoutes);
 
 // Health check
 app.get('/health', (_req, res) => res.json({ status: 'ok', port: PORT }));
@@ -53,4 +55,5 @@ server.listen(PORT, () => {
   console.log(`[server] API + WebSocket listening on port ${PORT}`);
   console.log(`[server] AIX_HOST: ${process.env.AIX_HOST || '(not set)'}`);
   console.log(`[server] VAULT_ADDR: ${process.env.VAULT_ADDR || 'http://127.0.0.1:8200'}`);
+  console.log(`[server] POWERSC_URL: ${process.env.POWERSC_URL || '(not set — scan buttons will show manual instructions)'}`);
 });

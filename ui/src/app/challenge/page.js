@@ -11,7 +11,8 @@ import {
   Link,
   InlineNotification,
 } from '@carbon/react';
-import { Launch, Certificate, Warning, ArrowRight } from '@carbon/icons-react';
+import { Launch, Certificate, Warning, ArrowRight, User } from '@carbon/icons-react';
+import ScanPanel from '../../components/ScanPanel/ScanPanel';
 import styles from './challenge-page.module.scss';
 
 const METRICS_BEFORE = [
@@ -26,6 +27,7 @@ export default function ChallengePage() {
   const [progress, setProgress] = useState(0);
   const [message, setMessage] = useState('');
   const [certsDeployed, setCertsDeployed] = useState(0);
+  const [beforeScanDone, setBeforeScanDone] = useState(false);
 
   async function handleGenerateCerts() {
     setStatus('running');
@@ -54,6 +56,18 @@ export default function ChallengePage() {
 
   return (
     <Grid className={styles.page} fullWidth>
+      {/* Customer context hint */}
+      <Column lg={16} md={8} sm={4} className={styles.contextHint}>
+        <User size={16} />
+        <span>
+          New to this demo?{' '}
+          <Link href="/customer" className={styles.contextLink}>
+            Open Customer Context
+          </Link>{' '}
+          — the Howdens story, personas, and the JLR case study that opens the conversation.
+        </span>
+      </Column>
+
       {/* Banner */}
       <Column lg={16} md={8} sm={4} className={styles.banner}>
         <Tag type="red" className={styles.tag}>Security Risk</Tag>
@@ -129,18 +143,26 @@ export default function ChallengePage() {
                 subtitle={`${certsDeployed} old certificates deployed to AIX client.`}
                 hideCloseButton
               />
-              <div className={styles.nextActions}>
-                <Link href={powerscUrl} target="_blank" renderIcon={Launch} className={styles.powerscLink}>
-                  Open PowerSC — view BEFORE state
-                </Link>
-                <Button
-                  renderIcon={ArrowRight}
-                  href="/solution"
-                  kind="primary"
-                  className={styles.actionButton}>
-                  Continue to The Solution
-                </Button>
-              </div>
+              <ScanPanel
+                label="Run BEFORE Scan"
+                description="Trigger a PowerSC Quantum Safety scan now to capture the BEFORE state — 150 old certificates, weak crypto, low compliance. The scan takes 30–90 seconds."
+                powerscUrl={powerscUrl}
+                onComplete={() => setBeforeScanDone(true)}
+              />
+              {beforeScanDone && (
+                <div className={styles.nextActions}>
+                  <Link href={powerscUrl} target="_blank" renderIcon={Launch} className={styles.powerscLink}>
+                    Open PowerSC — view BEFORE state
+                  </Link>
+                  <Button
+                    renderIcon={ArrowRight}
+                    href="/solution"
+                    kind="primary"
+                    className={styles.actionButton}>
+                    Continue to The Solution
+                  </Button>
+                </div>
+              )}
             </>
           )}
 

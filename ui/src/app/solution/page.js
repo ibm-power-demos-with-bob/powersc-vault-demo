@@ -13,6 +13,7 @@ import {
   Link,
 } from '@carbon/react';
 import { Security, Launch, ArrowRight, Renew } from '@carbon/icons-react';
+import ScanPanel from '../../components/ScanPanel/ScanPanel';
 import styles from './solution-page.module.scss';
 
 const VALUE_TILES = [
@@ -50,6 +51,7 @@ export default function SolutionPage() {
   const [currentStep, setCurrentStep] = useState(-1);
   const [certsIssued, setCertsIssued] = useState(0);
   const [message, setMessage] = useState('');
+  const [afterScanDone, setAfterScanDone] = useState(false);
 
   async function handleDeploy() {
     setStatus('running');
@@ -153,25 +155,33 @@ export default function SolutionPage() {
                 subtitle={`${certsIssued} certificates replaced. All now 24-hour TTL, RSA 2048, SHA-256.`}
                 hideCloseButton
               />
-              <div className={styles.nextActions}>
-                <Link href={powerscUrl} target="_blank" renderIcon={Launch} className={styles.powerscLink}>
-                  Open PowerSC — view updated certificate state
-                </Link>
-                <Button
-                  renderIcon={ArrowRight}
-                  href="/results"
-                  kind="primary"
-                  className={styles.actionButton}>
-                  Continue to The Results
-                </Button>
-                <Button
-                  renderIcon={Renew}
-                  kind="ghost"
-                  onClick={() => { setStatus('idle'); setCurrentStep(-1); }}
-                  className={styles.actionButton}>
-                  Run Again
-                </Button>
-              </div>
+              <ScanPanel
+                label="Run AFTER Scan"
+                description="Trigger a PowerSC Quantum Safety scan to capture the AFTER state — 150 Vault-issued certificates, 24-hour age, ~98% compliance."
+                powerscUrl={powerscUrl}
+                onComplete={() => setAfterScanDone(true)}
+              />
+              {afterScanDone && (
+                <div className={styles.nextActions}>
+                  <Link href={powerscUrl} target="_blank" renderIcon={Launch} className={styles.powerscLink}>
+                    Open PowerSC — view AFTER state
+                  </Link>
+                  <Button
+                    renderIcon={ArrowRight}
+                    href="/results"
+                    kind="primary"
+                    className={styles.actionButton}>
+                    Continue to The Results
+                  </Button>
+                  <Button
+                    renderIcon={Renew}
+                    kind="ghost"
+                    onClick={() => { setStatus('idle'); setCurrentStep(-1); setAfterScanDone(false); }}
+                    className={styles.actionButton}>
+                    Run Again
+                  </Button>
+                </div>
+              )}
             </>
           )}
 

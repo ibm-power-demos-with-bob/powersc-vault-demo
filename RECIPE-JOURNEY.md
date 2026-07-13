@@ -214,6 +214,10 @@ can be adapted for their customer.
 | 2026-07-11 | `replace-with-vault-certificates.sh` transferred to pvm3. ✅ |
 | 2026-07-11 | Vault systemd user service enabled on pvm2 — survives reboot. ✅ |
 | 2026-07-11 | PowerSC UI: keystore generated for pvm3, AIX client appeared as Endpoint, quantum safe scan paths configured (five targeted `/opt` subdirectories). In progress ⏳ |
+| Today | **UI customer context page added** — `/customer` route with JLR case study (Section A, static) and Howdens context (Section B, customisable). Personas for Sutcliffe and Callaway. JLR separated from Howdens per design decision. |
+| Today | **PowerSC scan buttons added to UI** — `ScanPanel` component. Challenge page: BEFORE scan after cert deploy. Solution page: AFTER scan after cert replacement. Best-effort API call; manual fallback always available. |
+| Today | **`scripts/setup.sh` written** — end-to-end infrastructure deployment in one command. Covers Podman, fapolicyd, Vault container, systemd service, PKI config, firewall, Node, git clone, npm build, `.env.local`, service start. Stops before any demo cert operations — those are UI buttons. |
+| Today | **Design decision recorded** — setup.sh boundary: infrastructure only. Generate certs, BEFORE scan, Vault replacement, AFTER scan are demo actions, not deployment actions. All four are UI buttons. |
 
 ---
 
@@ -239,9 +243,14 @@ can be adapted for their customer.
 - [x] Update Step 10 — `git clone --template=""` and `npm install --ignore-scripts`
 - [x] **Resolve Carbon UI build on RHEL** — fapolicyd rule `69-home-allow.rules` + `globals.scss` SCSS fixes + `@ibm/plex` font-path override. Build succeeds, all 6 routes compile. UI serving on port 3001. ✅
 - [x] Complete before/after demo cycle on p1294 — BEFORE: 599 weak certs / 150 weak keys → AFTER: 303 weak certs / 2 weak keys. 150 Vault-issued replacements confirmed. ✅
-- [ ] Confirm `icr.io/ppc64le-oss/vault-ppc64le:v1.14.8` image availability documented (confirmed on p1294 ✅)
-- [ ] Confirm `generate-old-certificates.sh` CA bundle path on fresh AIX instance (confirmed on p1294 ✅)
-- [ ] **Handoff test** — second tester reserves fresh TechZone PowerSC environment and runs recipe end-to-end
+- [x] Confirm `icr.io/ppc64le-oss/vault-ppc64le:v1.14.8` image availability documented (confirmed on p1294 ✅)
+- [x] Confirm `generate-old-certificates.sh` CA bundle path on fresh AIX instance (confirmed on p1294 ✅)
+- [x] **Add customer context page to UI** — JLR case study (static, Section A) separated from Howdens context (customisable, Section B). Personas for Richard Sutcliffe and Jackie Callaway. `/customer` route, added to header nav.
+- [x] **Add PowerSC scan buttons to UI** — `ScanPanel` component on Challenge (BEFORE) and Solution (AFTER) pages. Best-effort API call with graceful manual fallback.
+- [x] **Write `scripts/setup.sh`** — single-command infrastructure deployment (Steps 1–13). Stops at "services running". Does NOT run demo cert operations — those are UI buttons.
+- [x] **Update deploy skill Step 10** — references `setup.sh`, documents UI page table including `/customer`.
+- [ ] **Handoff test** — second tester reserves fresh TechZone PowerSC environment and runs recipe end-to-end using `setup.sh`
+- [ ] Confirm PowerSC REST API scan endpoint behaviour on a live reservation (API-driven scan vs manual fallback)
 - [ ] Determine correct marketplace repo target (EMEA or default CE marketplace) and submit
 
 ---

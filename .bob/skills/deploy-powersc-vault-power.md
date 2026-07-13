@@ -399,102 +399,88 @@ ENDSSH
 | `CA bundle not found` in generate script | Different AIX Toolbox path | Check `openssl version -d` on AIX; update `CA_BUNDLE` in script |
 | Vault container disappeared | RHEL rebooted or OOM | Re-run Steps 3 and 4 |
 
-## Step 10: Deploy the Carbon UI (optional — for LOB-friendly demos)
+## Step 10: Deploy the Demo UI — one command
 
-The `ui/` directory contains a Carbon Design System web app that wraps all demo operations
-in a three-page click-through interface. No command line is visible to the audience.
+The `ui/` directory contains a Carbon Design System web app. `scripts/setup.sh`
+handles the entire infrastructure deployment in a single command — Podman, fapolicyd,
+Vault, systemd service, Node.js, git clone, npm build, `.env.local`, and service start.
 
-The UI runs on the RHEL Vault host (pvm2) on port 3001. The Express backend runs on port 3002.
-Both must be started after Vault is running.
+**Steps 1–9 above are fully automated by `setup.sh`.** Run it instead of the individual
+steps in this skill if starting from a fresh reservation.
 
-### Deploy the UI on pvm2
-
-```bash
-ssh -i "$SSH_KEY" "$SSH_USER@$VAULT_HOST" << ENDSSH
-# Clone the repo (or git pull if already cloned)
-if [ ! -d ~/powersc-vault-demo ]; then
-  sudo dnf install -y git
-  # Use --template="" to bypass git hooks permission error on hardened RHEL
-  git clone --template="" https://github.com/ibm-power-demos-with-bob/powersc-vault-demo.git ~/powersc-vault-demo
-else
-  cd ~/powersc-vault-demo && git pull
-fi
-
-cd ~/powersc-vault-demo/ui
-
-# Install Node.js via dnf (NOT NodeSource — ppc64le not supported there)
-command -v node || sudo dnf install -y nodejs npm
-
-# Install dependencies
-# --ignore-scripts required: fapolicyd blocks IBM Plex telemetry postinstall script
-npm install --ignore-scripts
-
-# Build Next.js app
-npm run build
-ENDSSH
-```
-
-### Configure .env.local
+### Copy the SSH key and run setup.sh
 
 ```bash
-ssh -i "$SSH_KEY" "$SSH_USER@$VAULT_HOST" "cat > ~/powersc-vault-demo/ui/.env.local << EOF
-AIX_HOST=${AIX_HOST}
-AIX_USER=cecuser
-AIX_SSH_KEY_PATH=/home/cecuser/.ssh/techzone-key.pem
-VAULT_ADDR=http://127.0.0.1:8200
-VAULT_TOKEN=myroot
-VAULT_ADDR_EXTERNAL=http://${VAULT_HOST}:8200
-POWERSC_URL=https://${POWERSC_HOST}
-NEXT_PUBLIC_POWERSC_URL=https://${POWERSC_HOST}
-API_PORT=3002
-EOF"
-```
-
-Also copy the TechZone SSH key to the expected path on pvm2:
-```bash
+# 1. Copy the TechZone SSH key to pvm2
 scp -i "$SSH_KEY" "$SSH_KEY" "$SSH_USER@$VAULT_HOST:/home/cecuser/.ssh/techzone-key.pem"
-ssh -i "$SSH_KEY" "$SSH_USER@$VAULT_HOST" "chmod 600 /home/cecuser/.ssh/techzone-key.pem"
+
+# 2. SSH onto pvm2
+ssh -i "$SSH_KEY" "$SSH_USER@$VAULT_HOST"
+
+# 3. Clone the repo (one-time, on pvm2)
+git clone --template="" https://github.com/ibm-power-demos-with-bob/powersc-vault-demo.git ~/powersc-vault-demo
+
+# 4. Run setup — replace the FQDNs with your reservation's values
+bash ~/powersc-vault-demo/scripts/setup.sh \
+  --vault-host  "$VAULT_HOST"    \
+  --aix-host    "$AIX_HOST"      \
+  --powersc-url "https://$POWERSC_HOST" \
+  --ssh-key     /home/cecuser/.ssh/techzone-key.pem
 ```
 
-### Open firewall ports and start services
+The script prints a summary when complete:
+```
+  Demo UI:      http://<pvm2-fqdn>:3001
+  Backend API:  http://<pvm2-fqdn>:3002/health
+  Vault UI:     http://<pvm2-fqdn>:8200
+  PowerSC UI:   https://<pvm1-fqdn>
+```
 
+### What setup.sh does NOT do (demo actions — all in the UI)
+
+| Action | How to trigger |
+|--------|---------------|
+| Deploy 150 old certificates to AIX | UI: "Generate Demo Environment" button (Challenge page) |
+| Run BEFORE PowerSC scan | UI: "Run BEFORE Scan" button — or manually in PowerSC UI |
+| Replace certificates with Vault | UI: "Deploy Vault Certificates" button (Solution page) |
+| Run AFTER PowerSC scan | UI: "Run AFTER Scan" button — or manually in PowerSC UI |
+
+The UI scan buttons make a best-effort call to the PowerSC REST API. If the API is not
+reachable (credentials not set, or endpoint not supported), the button shows a manual
+fallback with a direct link to the PowerSC UI. The manual path always works.
+
+### Enable API-driven scan buttons (optional)
+
+Fill in `POWERSC_PASS` in `ui/.env.local` on pvm2, then restart the backend:
 ```bash
-ssh -i "$SSH_KEY" "$SSH_USER@$VAULT_HOST" << 'ENDSSH'
-# Open UI ports
-sudo firewall-cmd --permanent --add-port=3001/tcp
-sudo firewall-cmd --permanent --add-port=3002/tcp
-sudo firewall-cmd --reload
+# Edit .env.local
+nano ~/powersc-vault-demo/ui/.env.local
+# Set: POWERSC_PASS=<password from TechZone reservation>
+# Set: AIX_HOSTNAME=<short hostname of pvm3, e.g. p1294-pvm3>
 
-cd ~/powersc-vault-demo/ui
-
-# Start Express backend
-nohup npm run server > ~/server.log 2>&1 &
-echo "Backend PID: $!"
-
-# Start Next.js frontend
-nohup npm start > ~/ui.log 2>&1 &
-echo "Frontend PID: $!"
-
-sleep 3
-echo "Checking services..."
-curl -s http://localhost:3002/health && echo " — backend OK"
-curl -s http://localhost:3001 | head -c 100 && echo " — frontend OK"
-ENDSSH
+# Restart backend
+pkill -f 'node server/index' ; cd ~/powersc-vault-demo/ui && nohup npm run server > ~/server.log 2>&1 &
 ```
 
-### Access the UI
+### UI pages
 
 Open in browser: `http://<VAULT_HOST>:3001`
 
-The three pages:
-- **The Challenge** (`/`) — click "Generate Demo Environment" → deploys 150 old certificates to AIX
-- **The Solution** (`/solution`) — click "Deploy Vault Certificates" → Vault replaces all 150 certs
-- **The Results** (`/results`) — before/after table + ROI calculator
+| Page | Route | Purpose |
+|------|-------|---------|
+| Customer Context | `/customer` | Howdens story, JLR case study, personas — open this first |
+| The Challenge | `/` | Deploy old certs + trigger BEFORE scan |
+| The Solution | `/solution` | Replace with Vault certs + trigger AFTER scan |
+| The Results | `/results` | Before/after comparison table + ROI calculator |
 
 ### Stopping / restarting the UI
 
 ```bash
-ssh -i "$SSH_KEY" "$SSH_USER@$VAULT_HOST" "pkill -f 'node server/index' ; pkill -f 'next start'"
-# Then re-run the start commands above
+ssh -i "$SSH_KEY" "$SSH_USER@$VAULT_HOST" \
+  "pkill -f 'node server/index' ; pkill -f 'next start'"
+# Then re-run Step 13 of setup.sh, or:
+cd ~/powersc-vault-demo/ui
+nohup npm run server > ~/server.log 2>&1 &
+nohup npm start      > ~/ui.log    2>&1 &
 ```
 

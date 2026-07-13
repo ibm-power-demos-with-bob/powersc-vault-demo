@@ -129,3 +129,18 @@
   align-items: center;
   gap: 0.5rem;
 }
+
+.contextHint {
+  padding: 0.625rem 2rem;
+  background: var(--cds-layer-accent-01, var(--cds-layer-02));
+  border-bottom: 1px solid var(--cds-border-subtle-01);
+  font-size: 0.8125rem;
+  color: var(--cds-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.contextLink {
+  font-size: 0.8125rem;
+}
