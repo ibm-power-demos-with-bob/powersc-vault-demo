@@ -1,3 +1,4 @@
+'use client';
 import { Switcher, Notification, UserAvatar } from '@carbon/icons-react';
 import {
   Header,

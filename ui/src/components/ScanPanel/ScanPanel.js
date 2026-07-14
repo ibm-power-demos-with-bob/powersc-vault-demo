@@ -7,6 +7,7 @@ import {
   Link,
 } from '@carbon/react';
 import { Launch, Scan } from '@carbon/icons-react';
+import { apiBase } from '../../lib/api';
 
 // ScanPanel — triggers a PowerSC Quantum Safety scan and displays the live result.
 //
@@ -27,7 +28,9 @@ export default function ScanPanel({ label, description, powerscUrl, onComplete }
     setResult(null);
 
     try {
-      const res = await fetch('/api/powersc/scan', {
+      // Call the Express backend directly — long-running scan polling
+      // cannot go through the Next.js rewrite proxy (ECONNRESET).
+      const res = await fetch(`${apiBase()}/api/powersc/scan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
@@ -41,7 +44,6 @@ export default function ScanPanel({ label, description, powerscUrl, onComplete }
       }
 
       if (data.mode === 'timeout') {
-        // Scan timed out but we still have data — treat as complete with a warning
         setResult(data);
         setStatus('complete');
         setMessage('Scan timed out — showing last available results.');
@@ -120,7 +122,7 @@ export default function ScanPanel({ label, description, powerscUrl, onComplete }
               </div>
               <div>
                 <p style={{ fontSize: '1.75rem', fontWeight: 600, color: 'var(--cds-text-primary)', lineHeight: 1 }}>
-                  {result.strongCertificates + (result.quantumSafeCertificates || 0)}
+                  {(result.strongCertificates || 0) + (result.quantumSafeCertificates || 0)}
                 </p>
                 <p style={{ fontSize: '0.75rem', color: 'var(--cds-text-secondary)' }}>Strong / Quantum-Safe</p>
               </div>

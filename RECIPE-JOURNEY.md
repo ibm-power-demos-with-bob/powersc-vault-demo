@@ -221,6 +221,12 @@ can be adapted for their customer.
 | Today | **Discovery 12 — Node 16 incompatible with Express 4.21+:** Fresh RHEL 9 ppc64le installs Node 16.20.2 by default. Express 4.21 requires Node ≥18 (transitive deps `es-errors`, `iconv-lite`, `side-channel` not resolvable on Node 16). Fix: `sudo dnf module enable -y nodejs:20` before `dnf install nodejs`. NodeSource does not support ppc64le — RHEL AppStream module stream is always the correct path. Node 20.20.2 confirmed working on p1294-pvm2. |
 | Today | **Discovery 13 — dotenv path resolves relative to cwd, not script location:** `require('dotenv').config({ path: '../.env.local' })` silently loaded nothing when backend was started via `nohup npm run server` from `ui/`. Fix: `require('path').join(__dirname, '../.env.local')`. Symptom: all env vars show `(not set)` in server startup log despite `.env.local` existing. |
 | Today | **Deployment confirmed on p1294** — both services healthy: backend `{"status":"ok","port":"3002"}`, frontend serving HTML on port 3001. All env vars loading correctly. Node 20.20.2, npm 10.8.2. |
+| 2026-07-14 | **End-to-end UI test on p1294** — Generate Demo Environment ✅, Run BEFORE Scan ✅ (68% compliance, 599 weak certs), Deploy Vault Certificates ✅ (150 replaced), Run AFTER Scan ✅. Full before/after cycle confirmed working through the UI. |
+| 2026-07-14 | **Discovery 14 — Next.js rewrite proxy ECONNRESET on long-running routes:** The Next.js built-in rewrite proxy (next.config.js) resets the socket (`ECONNRESET`) on any request that takes more than a few seconds. Affected routes: `POST /api/powersc/scan` (polls PowerSC up to 3 minutes), `POST /api/vault/replace-certificates` (SSH + 150 curl calls), `POST /api/setup/generate-certificates` (SSH + script). Symptom: browser gets `Internal Server Error` as plain text, React throws "Unexpected token 'I'... is not valid JSON". Fix: created `ui/src/lib/api.js` helper (`apiBase()` returns `http://<hostname>:3002`) and updated all client-side `fetch('/api/...')` calls to use it directly, bypassing the proxy. `POST /api/vault/setup-pki` (fast, <2s) was unaffected. |
+| 2026-07-14 | **Discovery 15 — Header.js missing `'use client'`:** Carbon `HeaderContainer` uses browser state (`isSideNavExpanded`, `onClick`). Without `'use client'` Next.js 13 App Router treats it as a server component, which would crash on navigation. Fixed. |
+| 2026-07-14 | **Discovery 16 — vault.js wrong script path:** `replace-with-vault-certificates.sh` path was `../../scripts/` (resolves to `ui/scripts/`) instead of `../../../scripts/` (repo root). Would have caused "Deploy Vault Certificates" to fail with file not found. Fixed. |
+| 2026-07-14 | **Discovery 17 — NumberInput onChange crash on Results page:** Carbon v11 `NumberInput` fires `(evt, { value })` for stepper clicks but only `(evt)` for keyboard input. Handler was `(e, { value }) => setState(value)` — destructuring fails silently when second arg is absent, setting state to `undefined` and breaking the ROI calculator. Fixed with safe destructuring and `Number()` coercion. |
+| 2026-07-14 | **Discovery 18 — Python raw string Unicode escapes in ScanPanel:** Server-side file was written via a Python `r"""..."""` raw string which does not process `\u2014` etc. Characters appeared literally as `\u2014` in the rendered UI (e.g. "Open PowerSC \u2014 view full report"). Fixed by running a post-write replacement pass. Root cause noted for recipe — use explicit Unicode characters in source, not escape sequences. |
 
 ---
 
@@ -252,7 +258,13 @@ can be adapted for their customer.
 - [x] **Add PowerSC scan buttons to UI** — `ScanPanel` component on Challenge (BEFORE) and Solution (AFTER) pages. Best-effort API call with graceful manual fallback.
 - [x] **Write `scripts/setup.sh`** — single-command infrastructure deployment (Steps 1–13). Stops at "services running". Does NOT run demo cert operations — those are UI buttons.
 - [x] **Update deploy skill Step 10** — references `setup.sh`, documents UI page table including `/customer`.
-- [ ] **Handoff test** — second tester reserves fresh TechZone PowerSC environment and runs recipe end-to-end using `setup.sh`
+- [x] **End-to-end UI test on p1294** — full before/after cycle confirmed working through the UI ✅
+- [x] **Fix Next.js proxy ECONNRESET** — all long-running fetch calls now bypass the proxy via `apiBase()` helper (Discovery 14) ✅
+- [x] **Fix Header.js `'use client'`** — Discovery 15 ✅
+- [x] **Fix vault.js script path** — Discovery 16 ✅
+- [x] **Fix NumberInput onChange** — Discovery 17 ✅
+- [ ] **Sync server-side fixes back to git** — local source files updated; push to repo so `setup.sh` clones the fixed version on a fresh reservation
+- [ ] **Handoff test** — reserve fresh TechZone PowerSC environment and run `setup.sh` end-to-end from scratch
 - [ ] Confirm PowerSC REST API scan endpoint behaviour on a live reservation (API-driven scan vs manual fallback)
 - [ ] Determine correct marketplace repo target (EMEA or default CE marketplace) and submit
 

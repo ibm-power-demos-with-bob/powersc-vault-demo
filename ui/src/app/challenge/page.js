@@ -14,6 +14,7 @@ import {
 import { Launch, Certificate, Warning, ArrowRight, User } from '@carbon/icons-react';
 import ScanPanel from '../../components/ScanPanel/ScanPanel';
 import styles from './challenge-page.module.scss';
+import { apiBase } from '../../lib/api';
 
 // Static fallback values — shown before PowerSC summary loads
 const METRICS_DEFAULT = [
@@ -34,7 +35,7 @@ export default function ChallengePage() {
 
   // Fetch the current summary on mount so tiles show live data immediately
   useEffect(() => {
-    fetch('/api/powersc/summary')
+    fetch(`${apiBase()}/api/powersc/summary`)
       .then(r => r.json())
       .then(d => { if (d.complianceScore !== null && d.complianceScore !== undefined) setLiveMetrics(d); })
       .catch(() => {}); // silently ignore — static fallback stays
@@ -61,7 +62,7 @@ export default function ChallengePage() {
     setCertsDeployed(0);
 
     try {
-      const res = await fetch('/api/setup/generate-certificates', { method: 'POST' });
+      const res = await fetch(`${apiBase()}/api/setup/generate-certificates`, { method: 'POST' });
       const data = await res.json();
 
       if (!res.ok) throw new Error(data.error || 'Failed to generate certificates');

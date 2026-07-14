@@ -15,6 +15,7 @@ import {
 import { Security, Launch, ArrowRight, Renew } from '@carbon/icons-react';
 import ScanPanel from '../../components/ScanPanel/ScanPanel';
 import styles from './solution-page.module.scss';
+import { apiBase } from '../../lib/api';
 
 const VALUE_TILES = [
   {
@@ -61,7 +62,7 @@ export default function SolutionPage() {
 
     try {
       // Step 1: Setup PKI
-      const pkiRes = await fetch('/api/vault/setup-pki', { method: 'POST' });
+      const pkiRes = await fetch(`${apiBase()}/api/vault/setup-pki`, { method: 'POST' });
       if (!pkiRes.ok) {
         const d = await pkiRes.json();
         throw new Error(d.error || 'Vault PKI setup failed');
@@ -69,8 +70,8 @@ export default function SolutionPage() {
       setCurrentStep(1);
       setMessage('Issuing and deploying certificates to AIX…');
 
-      // Step 2+3: Replace certificates (this takes a while — streams progress via polling)
-      const replaceRes = await fetch('/api/vault/replace-certificates', { method: 'POST' });
+      // Step 2+3: Replace certificates (takes several minutes — SSH + 150 Vault API calls)
+      const replaceRes = await fetch(`${apiBase()}/api/vault/replace-certificates`, { method: 'POST' });
       const replaceData = await replaceRes.json();
       if (!replaceRes.ok) throw new Error(replaceData.error || 'Certificate replacement failed');
 

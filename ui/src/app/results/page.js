@@ -16,6 +16,7 @@ import {
 } from '@carbon/react';
 import { Launch, Renew, ArrowLeft } from '@carbon/icons-react';
 import styles from './results-page.module.scss';
+import { apiBase } from '../../lib/api';
 
 const COMPARISON = [
   { metric: 'Average Certificate Age', before: '15+ years', after: '24 hours', delta: '99% ↓' },
@@ -43,7 +44,7 @@ export default function ResultsPage() {
 
   // Fetch current summary on mount
   useEffect(() => {
-    fetch('/api/powersc/summary')
+    fetch(`${apiBase()}/api/powersc/summary`)
       .then(r => r.json())
       .then(d => { if (d.complianceScore !== null && d.complianceScore !== undefined) setLiveMetrics(d); })
       .catch(() => {});
@@ -154,7 +155,11 @@ export default function ResultsPage() {
               value={outagesPerYear}
               min={0}
               max={20}
-              onChange={(e, { value }) => setOutagesPerYear(value)}
+              onChange={(e, { value } = {}) => {
+                // Carbon v11: stepper fires (evt, { value }); direct typing fires (evt)
+                const n = value !== undefined ? Number(value) : Number(e?.target?.value);
+                if (!isNaN(n)) setOutagesPerYear(n);
+              }}
             />
             <NumberInput
               id="hours"
@@ -162,7 +167,10 @@ export default function ResultsPage() {
               value={hoursPerMonth}
               min={0}
               max={200}
-              onChange={(e, { value }) => setHoursPerMonth(value)}
+              onChange={(e, { value } = {}) => {
+                const n = value !== undefined ? Number(value) : Number(e?.target?.value);
+                if (!isNaN(n)) setHoursPerMonth(n);
+              }}
             />
           </div>
           {roi && (

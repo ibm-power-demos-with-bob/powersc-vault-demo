@@ -95,7 +95,7 @@ router.post('/replace-certificates', async (req, res) => {
   try {
     req.io.emit('vault:status', { step: 1, message: 'Deploying certificates to AIX…' });
 
-    const scriptSrc = path.resolve(__dirname, '../../scripts/replace-with-vault-certificates.sh');
+    const scriptSrc = path.resolve(__dirname, '../../../scripts/replace-with-vault-certificates.sh');
     const remotePath = `/home/${aixUser}/replace-with-vault-certificates.sh`;
 
     // The replace script needs VAULT_ADDR pointing to this RHEL host (not 127.0.0.1)
