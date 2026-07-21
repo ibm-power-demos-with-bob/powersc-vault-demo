@@ -65,14 +65,20 @@ and provide governance-ready compliance reporting.
 
 **Do this before you touch any infrastructure.**
 
-This demo was built for Howdens Joinery using IBM Consulting Advantage research on their
-2025 Annual Report. Every talking point was extracted from Howdens' own words.
+This recipe was developed using Howdens Joinery as an internal worked example. Howdens is
+**not** a customer reference for this recipe and must not appear in customer-facing demo
+content. The Howdens material is a private placeholder showing how to tailor the story —
+not a script to present externally.
 
-For your customer, ask Bob (in IBM Power Security Demo mode) to:
-1. Help you research your customer using IBM Consulting Advantage
-2. Replace Howdens-specific language with your customer's industry, personas, and risk language
-3. Find the right risk case study for their industry (the JLR case study works for UK
-   manufacturing / distribution; other industries need their own equivalent)
+For every new customer, ask Bob (in IBM Power Security Demo mode) to:
+1. Help you research the target customer using IBM Consulting Advantage
+2. Replace all Howdens-specific language with the target customer's industry, personas,
+   workload mix, and risk language
+3. Keep the JLR outage as a reusable public case study when it fits, or choose a better
+   public industry example when needed
+4. Confirm the workload framing for the demo: Oracle-only, Oracle + SAP, or Oracle + other
+   enterprise workloads on IBM Power
+5. Confirm that no real customer placeholder content remains before the demo is shown
 
 The story phase takes 15–30 minutes. It is the single biggest factor in whether the demo
 lands or falls flat.
@@ -182,7 +188,8 @@ Then trigger a PowerSC scan from the UI to confirm BEFORE state.
 
 ## The Howdens Worked Example
 
-The initial demo was built for Howdens Joinery (UK kitchen and joinery supplier):
+The initial demo was built using Howdens Joinery (UK kitchen and joinery supplier) as an
+**internal worked example only**.
 
 - **IBM Consulting Advantage input:** Howdens 2025 Annual Report
 - **Key extractions:** "low appetite for cyber security risk", six IBM Power E980 servers
@@ -191,8 +198,18 @@ The initial demo was built for Howdens Joinery (UK kitchen and joinery supplier)
   5,000 suppliers affected — parallels Howdens' distributed depot network and SAP dependency
 - **Demo personas:** Richard Sutcliffe (IT Director), Jackie Callaway (CFO + Audit Committee)
 
+Use this worked example only as a reference for how to apply IBM Consulting Advantage research
+and build a substitution map. Do not present Howdens as the target customer unless you have
+explicit permission to do so.
+
+For customer-facing use, the default framing should be generic:
+- Oracle on AIX is the baseline workload pattern
+- SAP is optional and only used when it fits the target customer
+- Integration, proxy, load balancer, and middleware endpoints are representative enterprise
+  workloads rather than customer-specific claims
+
 This worked example is preserved in [`docs/hashicorp-vault-powersc-demo-plan.md`](docs/hashicorp-vault-powersc-demo-plan.md)
-as a reference for how to apply IBM Consulting Advantage research to this demo.
+as a reference for how to tailor the recipe, not as the shipped customer story.
 
 ---
 

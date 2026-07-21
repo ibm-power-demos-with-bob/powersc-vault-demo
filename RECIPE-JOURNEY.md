@@ -15,8 +15,9 @@
 A **Bob Marketplace recipe** that lets a seller or CE:
 
 1. **Tailor the customer story** — guided by Bob using IBM Consulting Advantage research on
-   the customer's annual report or public documents, replacing Howdens-specific language with
-   their customer's industry, personas, and risk language.
+   the customer's annual report or public documents, replacing all Howdens-specific placeholder
+   content with the target customer's industry, personas, workload mix, and risk language.
+   Howdens is an internal worked example only and must not appear in customer-facing demos.
 2. **Deploy the demo environment** — Bob drives Vault deployment via SSH onto the RHEL host
    in a fresh TechZone reservation. The seller completes the required PowerSC UI steps
    (documented in the skill).
@@ -50,7 +51,9 @@ This is a **Platform Reality demo** — it runs on actual IBM PowerSC and actual
 mock UIs, no simulated data except the certificate files on the AIX target.
 
 The Howdens worked example was built using IBM Consulting Advantage analysis of the Howdens
-2025 Annual Report. The recipe codifies this as the first step for any new customer.
+2025 Annual Report. It is preserved as an internal reference for how to tailor the story,
+not as customer-facing demo content. The recipe codifies story replacement as the first step
+for any new customer.
 
 ---
 

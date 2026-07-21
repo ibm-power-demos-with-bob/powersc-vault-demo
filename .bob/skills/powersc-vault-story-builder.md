@@ -21,6 +21,11 @@ The seller has a customer in mind. They may have a meeting coming up, or they ma
 exploring whether this demo is the right fit. This skill helps them answer that question
 and, if yes, tailor the demo so it speaks the customer's language.
 
+**Important:** Howdens is an internal worked example used during recipe development. It is
+not a customer reference and must not appear in customer-facing demo content unless explicit
+permission has been given. The job of this skill is to remove all Howdens-specific placeholder
+content and replace it with target-customer language before the demo is used externally.
+
 ## The Core Story Structure
 
 The demo has five acts that must be adapted per customer:
@@ -33,13 +38,15 @@ The demo has five acts that must be adapted per customer:
 | **4. The Takeover** | Vault issues new certificates; they are deployed to AIX | Frame as "automated lifecycle" matching customer's operational priorities |
 | **5. The Transformation** | PowerSC AFTER scan shows dramatic improvement | Connect the metrics (98% compliance, 24h cert age) to customer's stated priorities |
 
-## Step 1: Ask the Seller Three Questions
+## Step 1: Ask the Seller Five Questions
 
 Before any research, ask:
 
-1. **Who is the audience?** (e.g., CISO and security architects, IT director, Audit Committee, mixed executive + technical)
-2. **What industry?** (This determines which risk case study is most relevant)
-3. **What do you already know about their pain?** (Any recent incidents, audit findings, manual processes, compliance pressure)
+1. **Who is the target customer?** (This demo must be tailored; never present the Howdens placeholder externally)
+2. **Who is the audience?** (e.g., CISO and security architects, IT director, Audit Committee, mixed executive + technical)
+3. **What industry?** (This determines which risk case study is most relevant)
+4. **What workloads on IBM Power matter here?** (Oracle only, Oracle + SAP, or Oracle + other enterprise workloads)
+5. **What do you already know about their pain?** (Any recent incidents, audit findings, manual processes, compliance pressure)
 
 If the seller has already done IBM Consulting Advantage research, ask them to share the
 key findings. If not, recommend it as the next step.
@@ -97,7 +104,10 @@ The structure of the case study is always:
 
 ### Replacing Howdens-Specific Language
 
-The demo scripts and documentation use Howdens-specific names:
+The demo scripts and documentation use Howdens-specific names and framing. These are
+placeholder inputs only and must be removed from customer-facing material before the demo
+is used.
+
 - `howdens.local` — internal domain names in certificates (invisible to audience, can remain)
 - "Howdens' SAP and Oracle landscape" — replace with customer's actual workloads
 - "depot network" → replace with customer's operational footprint (branches, factories, sites)
@@ -105,6 +115,12 @@ The demo scripts and documentation use Howdens-specific names:
 - "Built for the Trade" → replace with customer's own brand promise or SLA
 - Jackie Callaway (CFO), Richard Sutcliffe (IT Director) → replace with real or representative personas
 - "Audit Committee" → replace with appropriate governance body
+
+If the target customer does not have SAP, do not force SAP into the story. The default
+customer-facing framing is:
+- Oracle on AIX = baseline pattern
+- SAP = optional when relevant
+- integration / proxy / load balancer / middleware = representative enterprise endpoints
 
 Create a simple substitution map before the demo:
 
@@ -145,12 +161,15 @@ Output a structured document for the seller containing:
 4. **Solution narrative** — what to say while introducing Vault
 5. **AFTER talking points** — what to say while showing PowerSC after state
 6. **Closing** (30 seconds) — connects back to their stated priority
+7. **Substitution checklist** — explicit confirmation that Howdens-specific names, personas,
+   workload claims, and business language have been removed from customer-facing content
 
 This document is what the seller rehearses, not the generic demo script.
 
 ## The Howdens Worked Example (Reference)
 
-The Howdens engagement demonstrates the full process:
+The Howdens engagement demonstrates the full process, but only as an **internal worked
+example**. It is not a default story to present externally.
 
 **Research source:** IBM Consulting Advantage analysis of Howdens 2025 Annual Report
 
@@ -169,7 +188,8 @@ The Howdens engagement demonstrates the full process:
 - "low appetite for cyber security risk" = kept verbatim (their own words)
 
 **Result:** A demo narrative where every talking point connects to something Howdens
-documented in their own annual report. The audience recognises their own language.
+documented in their own annual report. This is the model for substitution, not the shipped
+customer story.
 
 ## When This Demo is NOT the Right Fit
 

@@ -246,6 +246,15 @@ fi
 # ── Step 6: Open firewall ports ───────────────────────────────────────────────
 step "Step 6: Open firewall ports"
 
+if ! sudo systemctl is-enabled firewalld &>/dev/null; then
+  info "firewalld is masked or disabled — enabling it…"
+  sudo systemctl unmask firewalld >/dev/null 2>&1 || true
+  sudo systemctl enable --now firewalld
+elif ! sudo systemctl is-active firewalld &>/dev/null; then
+  info "firewalld is installed but not running — starting it…"
+  sudo systemctl start firewalld
+fi
+
 for port in 8200 3001 3002; do
   if sudo firewall-cmd --query-port="${port}/tcp" --permanent &>/dev/null; then
     info "Port $port already open"
