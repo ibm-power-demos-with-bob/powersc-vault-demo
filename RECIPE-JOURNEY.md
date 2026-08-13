@@ -230,6 +230,8 @@ can be adapted for their customer.
 | 2026-07-14 | **Discovery 16 — vault.js wrong script path:** `replace-with-vault-certificates.sh` path was `../../scripts/` (resolves to `ui/scripts/`) instead of `../../../scripts/` (repo root). Would have caused "Deploy Vault Certificates" to fail with file not found. Fixed. |
 | 2026-07-14 | **Discovery 17 — NumberInput onChange crash on Results page:** Carbon v11 `NumberInput` fires `(evt, { value })` for stepper clicks but only `(evt)` for keyboard input. Handler was `(e, { value }) => setState(value)` — destructuring fails silently when second arg is absent, setting state to `undefined` and breaking the ROI calculator. Fixed with safe destructuring and `Number()` coercion. |
 | 2026-07-14 | **Discovery 18 — Python raw string Unicode escapes in ScanPanel:** Server-side file was written via a Python `r"""..."""` raw string which does not process `\u2014` etc. Characters appeared literally as `\u2014` in the rendered UI (e.g. "Open PowerSC \u2014 view full report"). Fixed by running a post-write replacement pass. Root cause noted for recipe — use explicit Unicode characters in source, not escape sequences. |
+| 2026-08-13 | **TechZone provisioner confirmed: v1** — PowerSC TechZone collection confirmed as v1 (no entry in v2 environment catalogue). Manual reservation remains required. Bob TechZone MCP cannot book this environment automatically. |
+| 2026-08-13 | **RECIPE.md added** — Marketplace frontmatter entry point created at repo root. Accurate v1 status documented. Skills, modes, tags, and TechZone metadata all captured. |
 
 ---
 
