@@ -2,11 +2,11 @@
 ## Bob MODE: pre-sales-demo (Pre-Sales Demo Builder mode)
 ## SKILL: powersc-vault-story-builder
 
-**Build Path:** Platform Reality Demo — IBM PowerSC infrastructure + live Vault certificate issuance
+**Build Path:** Platform Reality Demo — IBM PowerSC infrastructure + live Vault certificate issuance + Carbon Web Application
 
-Why this is a strong platform reality demo: IBM PowerSC monitors the full certificate estate on IBM Power AIX hosts continuously, and HashiCorp Vault replaces multi-year-old manually-tracked certificates with 24-hour automatically-rotated ones — live, in front of the customer, on real infrastructure. The "aha" moment is the side-by-side PowerSC Quantum Inventory Report: 287+ days → 24 hours, 67% compliance → 98%, in a single scan. The audience can see the number change. No slide explains certificate risk as effectively as a live compliance score improving in the room.
+Why this is a strong platform reality demo: IBM PowerSC monitors the full certificate estate on IBM Power AIX hosts continuously, and HashiCorp Vault replaces multi-year-old manually-tracked certificates with 24-hour automatically-rotated ones — live, in front of the customer, on real infrastructure. The "aha" moment is the side-by-side transformation: 287+ days → 24 hours, 67% compliance → 98%, in a single scan. The audience can see the numbers change both in the PowerSC GUI and in the dedicated Carbon Design System demo web application.
 
-Cluster: Security & Compliance · Industry: Customisable per engagement (default: enterprise Oracle/SAP on AIX; worked example: UK manufacturing/distribution) · Output shape: Live PowerSC before/after scan + Vault PKI issuing 24-hour certificates + 150 synthetic certificates replaced on AIX target
+Cluster: Security & Compliance · Industry: Customisable per engagement (default: enterprise Oracle/SAP on AIX; worked example: UK manufacturing/distribution) · Output shape: Next.js + Carbon Design System web app (port 3001) + Live PowerSC before/after scan + Vault PKI issuing 24-hour certificates + 150 synthetic certificates replaced on AIX target
 
 > **Build path guardrail.** The deliverable is real IBM PowerSC showing real certificate data on a real AIX host. If PowerSC is not running or the AIX client is not registered, the demo has no before/after. A screenshot of PowerSC with hardcoded numbers is not this demo. The value is the live scan transformation — that requires the TechZone environment.
 
@@ -40,6 +40,7 @@ This is a before/after platform reality demo. The PowerSC Quantum Inventory Repo
 
 The architecture is deliberately minimal — three nodes, no orchestration layer — because the story is about continuous monitoring meeting automated issuance on infrastructure the client already runs.
 
+- **Carbon Design System Web App & Express Backend on RHEL/Power (pvm2)** — the customer-facing interface running on port 3001 (Next.js frontend) and port 3002 (Express API + WebSocket). Provides interactive narrative views: `/customer` (JLR case study and personas), `/challenge` (baseline risk & weak cert trigger), `/solution` (automated Vault PKI deployment step), and `/results` (before/after comparison table & ROI/avoided downtime calculator).
 - **IBM PowerSC (pvm1)** — the monitoring and compliance layer. Quantum Inventory Report scans the AIX endpoint for certificate age, cryptographic strength, and quantum-safe readiness. This is the evidence layer.
 - **HashiCorp Vault on RHEL/Power (pvm2)** — PKI engine running in rootless Podman, Power-native container image. Issues 24-hour certificates via a configured role. No native ppc64le binary exists — the container is the correct deployment path.
 - **AIX client (pvm3)** — the workload simulation. 150 synthetic certificates representing SAP and Oracle paths under `/opt`. These are the certificates PowerSC scans and Vault replaces.
@@ -73,12 +74,17 @@ The recipe was developed using a UK manufacturing/distribution company as the in
 
 **Required:**
 - IBM Bob with the `pre-sales-demo` mode and the `powersc-vault-story-builder` skill
-- IBM VPN active throughout — the TechZone `cecc.ihost.com` domain is IBM-intranet only
+- IBM VPN active throughout — the TechZone `cecc.ihost.com` / `pok-systems.techzone.ibm.com` domain is IBM-intranet only
 - A PowerSC TechZone reservation (v1 — manual reservation required; Bob cannot automate this)
   - Search TechZone for "PowerSC" → look for the collection that provides PowerSC + RHEL + AIX + IBM i
-  - One reservation gives you four nodes: pvm1 (PowerSC), pvm2 (RHEL/Vault), pvm3 (AIX), pvm4 (IBM i, unused)
+  - One reservation gives you four nodes: pvm1 (PowerSC), pvm2 (RHEL/Vault + Carbon Web UI), pvm3 (AIX), pvm4 (IBM i, unused)
 - Private SSH key downloaded from the TechZone reservation details page
 - SSH client (OpenSSH — not PuTTY, which has key-format issues)
+
+**Key Endpoints Once Deployed:**
+- **Demo Carbon Web App:** `http://<pvm2>:3001` (Customer story, interactive triggers, & results dashboard)
+- **PowerSC Server UI:** `https://<pvm1>` (Live compliance & Quantum Inventory Report)
+- **HashiCorp Vault UI:** `http://<pvm2>:8200` (PKI engine & certificates)
 
 **Optional:**
 - IBM Consulting Advantage access — for the story tailoring phase (PROMPT #1). Without it, you can still tailor the story manually using the substitution map.
@@ -233,12 +239,14 @@ Environment:
 
 Run the full deployment in this order:
 
-1. RHEL/Vault (pvm2):
+1. RHEL/Vault & Demo UI (pvm2):
    - Apply fapolicyd trust remediation
    - Install and start Vault container (Power-native image: icr.io/ppc64le-oss/vault-ppc64le:v1.14.8)
    - Configure Vault PKI — enable secrets engine, create root CA, create sap-oracle role (max_ttl 24h)
    - Set up systemd user service and loginctl linger so Vault survives SSH session close
+   - Install Node.js & build/start the Carbon Design System Web App (`ui` directory) on port 3001 & backend on port 3002
    - Test certificate issuance: vault write pki/issue/sap-oracle common_name="test.local" ttl=24h
+   - Report: Demo Web UI reachable at http://<pvm2>:3001 ✅ / ❌
    - Report: Vault UI reachable at http://<pvm2>:8200 ✅ / ❌
 
 2. AIX (pvm3):
@@ -280,7 +288,8 @@ DEMO_MODE=live
 
 ### EXPECTED OUTPUT
 
-**pvm2 — Vault running on RHEL/Power:**
+**pvm2 — Vault & Demo Web UI running on RHEL/Power:**
+- Demo Web App accessible at `http://<pvm2>:3001` (Next.js Carbon UI) and API at `http://<pvm2>:3002`
 - Vault container running via Podman (`podman ps` shows vault container)
 - Vault UI accessible at `http://<pvm2>:8200`
 - PKI secrets engine enabled at `pki/`
@@ -308,11 +317,11 @@ DEMO_MODE=live
 
 **Pre-demo setup (10 minutes before):**
 - IBM VPN must be active
-- Browser tab 1: PowerSC UI at `https://<pvm1>` — confirm it loads and pvm3 shows Active
-- Browser tab 2: Vault UI at `http://<pvm2>:8200` — confirm it loads
-- Terminal (minimised): SSH to pvm2, Vault token set, `vault status` returning `Initialized true`
+- Browser tab 1: Demo Web UI at `http://<pvm2>:3001` — confirm it loads (`/customer`, `/challenge`, `/solution`, `/results`)
+- Browser tab 2: PowerSC UI at `https://<pvm1>` — confirm it loads and pvm3 shows Active
+- Browser tab 3: Vault UI at `http://<pvm2>:8200` — confirm it loads
 - Have `DEMO_SCRIPT.md` open on a second monitor or printed
-- Brief the audience: *"Everything you're about to see is running on IBM Power. This is the actual PowerSC monitoring platform and actual HashiCorp Vault. We're going to replace 150 certificates live."*
+- Brief the audience: *"Everything you're about to see is running on IBM Power. This is the actual PowerSC monitoring platform, actual HashiCorp Vault, and an interactive Carbon demonstration interface. We're going to replace 150 certificates live."*
 
 **Step 1 — Open PowerSC and show the BEFORE state (3 min)**
 
@@ -324,11 +333,11 @@ Switch to the Vault UI. Show the PKI secrets engine and the `sap-oracle` role. S
 
 **Step 3 — Run the replacement (3 min)**
 
-Run `scripts/replace-with-vault-certificates.sh` (or ask Bob to run it via SSH). Show the output as certificates are replaced — 150 of them, one Vault API call per cert. Say: *"In production, this runs on a schedule. No human intervention. Every certificate rotates automatically."*
+In the Demo Web UI (`/solution`), click the automated **Deploy / Replace Certificates** button (or run `scripts/replace-with-vault-certificates.sh` via SSH). Show the progress and live output as certificates are replaced — 150 of them, one Vault API call per cert. Say: *"In production, this runs on a schedule. No human intervention. Every certificate rotates automatically."*
 
 **Step 4 — Trigger PowerSC rescan and show the AFTER state (3 min)**
 
-Trigger a scan from the PowerSC UI on the AIX endpoint. Wait. Refresh the Quantum Inventory Report. Show the transformation: 24 hours, ~98% compliance, quantum-safe ready. Say: *"Same platform. Same IBM Power infrastructure you already own. The only thing that changed is automation."*
+Trigger a scan from the Demo Web UI (or from the PowerSC UI on the AIX endpoint). Wait. Refresh the Quantum Inventory Report or Results page (`/results`). Show the transformation: 24 hours, ~98% compliance, quantum-safe ready. Say: *"Same platform. Same IBM Power infrastructure you already own. The only thing that changed is automation."*
 
 **Step 5 — Client questions and close (5 min)**
 
