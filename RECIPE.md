@@ -32,7 +32,7 @@ skills:
 modes:
   - ibm-power-security-demo
 techzone:
-  collection_url: https://techzone.ibm.com/collection/power-systems-security-powersc
+  collection_url: https://techzone.ibm.com/collection/powersc-hands-on/environments
   infrastructure: systems-onprem
   note: >
     v1 TechZone environment — manual reservation required.
@@ -42,16 +42,17 @@ techzone:
 
 # PowerSC + HashiCorp Vault on IBM Power — Certificate Security Demo
 
-For full setup instructions, see [`COLLECTION.md`](COLLECTION.md).
+For the full recipe brief (prompts, demo script, sample inputs, known issues), see [`01-PowerSC-Vault-IBM-Power.md`](01-PowerSC-Vault-IBM-Power.md).
+
+For full operational setup instructions, see [`COLLECTION.md`](COLLECTION.md).
 
 For the development journey, decisions, and deployment log, see [`RECIPE-JOURNEY.md`](RECIPE-JOURNEY.md).
 
 ## Quick Start
 
-1. **Story phase** — Tell Bob: *"I want to use the PowerSC + Vault recipe. My customer is [name/industry/audience]."*
-2. **Reserve** the PowerSC TechZone collection (manual, ~5 min effort + ~20 min wait)
-3. **Deploy** — Tell Bob your pvm2 FQDN and SSH key path. Bob deploys Vault.
-4. **Setup** — Complete the PowerSC UI steps (Bob guides you through each one).
-5. **Demo** — Before/after PowerSC scan showing 150 certificates transformed.
+1. **Story** — Tell Bob: *"I want to use the PowerSC + Vault recipe. My customer is [name/industry/audience]."* (PROMPT #1 — no infrastructure needed)
+2. **Preflight** — Once your TechZone environment is Ready, give Bob the three FQDNs and SSH key path. Bob runs a green/red connectivity report. (PROMPT #2)
+3. **Deploy** — Bob deploys Vault on pvm2, loads 150 certificates on pvm3, and guides you through the PowerSC UI setup steps. (PROMPT #3)
+4. **Demo** — Before/after PowerSC Quantum Inventory scan: 150 certificates, 287+ days → 24 hours, ~67% → ~98% compliance.
 
-**Total human effort:** ~30 minutes. **Total elapsed:** ~60 minutes.
+**Total human effort:** ~30 minutes. **Total elapsed:** ~60 minutes (mostly TechZone provisioning).

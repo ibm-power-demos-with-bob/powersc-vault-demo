@@ -99,23 +99,23 @@ replace_with_vault_cert() {
         return 1
     fi
 
-    # Extract certificate using awk (sed hits line-buffer limits on AIX for long JSON lines)
-    cert_data=$(echo "$vault_output" | awk -F'"certificate":"' 'NF>1{gsub(/".*$/,"",$2); gsub(/\\n/,"\n",$2); print $2}')
+    # Extract certificate and private key using Python 3 JSON parser (strict=False handles literal unescaped newlines)
+    cert_data=$(echo "$vault_output" | python3 -c "import sys, json; d=json.loads(sys.stdin.read(), strict=False); print(d.get('data',{}).get('certificate',''))" 2>/dev/null)
+    key_data=$(echo "$vault_output" | python3 -c "import sys, json; d=json.loads(sys.stdin.read(), strict=False); print(d.get('data',{}).get('private_key',''))" 2>/dev/null)
+
     if [ -z "$cert_data" ]; then
         echo "  FAILED: empty certificate for $common_name"
         touch "$cert_path" "$key_path" 2>/dev/null || true
         return 1
     fi
-    echo "$cert_data" > "$cert_path"
+    printf '%s\n' "$cert_data" > "$cert_path"
 
-    # Extract private key using awk
-    key_data=$(echo "$vault_output" | awk -F'"private_key":"' 'NF>1{gsub(/".*$/,"",$2); gsub(/\\n/,"\n",$2); print $2}')
     if [ -z "$key_data" ]; then
         echo "  FAILED: empty key for $common_name"
         touch "$key_path" 2>/dev/null || true
         return 1
     fi
-    echo "$key_data" > "$key_path"
+    printf '%s\n' "$key_data" > "$key_path"
 
     chmod 644 "$cert_path" 2>/dev/null || true
     chmod 600 "$key_path"  2>/dev/null || true

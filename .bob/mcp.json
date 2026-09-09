@@ -10,10 +10,7 @@
       "alwaysAllow": [
         "search_assets",
         "get_asset",
-        "list_installed",
-        "list_favorites",
-        "suggest_assets",
-        "list_updates"
+        "list_installed"
       ]
     }
   }

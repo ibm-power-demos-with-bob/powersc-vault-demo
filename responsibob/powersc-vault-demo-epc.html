@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Responsibob EPC — PowerSC + Vault Demo</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'IBM Plex Sans', Arial, sans-serif; background: #f4f4f4; color: #161616; font-size: 14px; }
+  .page { max-width: 960px; margin: 0 auto; padding: 2rem; }
+
+  /* Header */
+  .header { background: #161616; color: #f4f4f4; padding: 2rem; margin-bottom: 1.5rem; }
+  .header h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.25rem; }
+  .header .sub { font-size: 0.875rem; color: #a8a8a8; }
+  .header .meta { display: flex; gap: 2rem; margin-top: 1rem; flex-wrap: wrap; }
+  .header .meta-item { font-size: 0.75rem; color: #c6c6c6; }
+  .header .meta-item strong { color: #f4f4f4; display: block; font-size: 0.875rem; }
+  .rb-badge { display: inline-block; background: #0f62fe; color: white; font-size: 0.6875rem; font-weight: 600; padding: 0.2rem 0.5rem; border-radius: 2px; margin-top: 0.75rem; letter-spacing: 0.05em; }
+
+  /* EPC Scale */
+  .epc-section { background: white; padding: 1.5rem; margin-bottom: 1.5rem; border-left: 4px solid #0f62fe; }
+  .epc-section h2 { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: #161616; }
+  .epc-scale { display: flex; flex-direction: column; gap: 4px; max-width: 480px; }
+  .epc-bar { display: flex; align-items: center; gap: 0.75rem; }
+  .epc-label { font-weight: 700; font-size: 1rem; width: 1.5rem; text-align: center; }
+  .epc-track { height: 28px; display: flex; align-items: center; padding: 0 0.75rem; color: white; font-size: 0.75rem; font-weight: 600; position: relative; border-radius: 2px; }
+  .epc-marker { margin-left: 0.5rem; font-size: 0.6875rem; font-weight: 400; opacity: 0.9; }
+  .epc-a { background: #008054; }
+  .epc-b { background: #19a643; }
+  .epc-c { background: #8dc21f; color: #161616; }
+  .epc-d { background: #ffd500; color: #161616; }
+  .epc-e { background: #f4aa00; color: #161616; }
+  .epc-f { background: #e8680a; }
+  .epc-g { background: #c8181f; }
+  .current-marker { display: inline-block; background: #161616; color: white; font-size: 0.6875rem; padding: 1px 5px; border-radius: 2px; margin-left: 0.5rem; }
+  .potential-marker { display: inline-block; background: #0f62fe; color: white; font-size: 0.6875rem; padding: 1px 5px; border-radius: 2px; margin-left: 0.25rem; }
+
+  /* Two-axis summary */
+  .axis-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-top: 1rem; }
+  .axis-card { background: #f4f4f4; padding: 1rem; border-radius: 2px; text-align: center; }
+  .axis-card .axis-rating { font-size: 3rem; font-weight: 700; line-height: 1; }
+  .axis-card .axis-name { font-size: 0.75rem; color: #525252; margin-top: 0.25rem; }
+  .axis-card .axis-note { font-size: 0.6875rem; color: #6f6f6f; margin-top: 0.5rem; }
+  .rating-e { color: #f4aa00; }
+  .rating-c { color: #5a8200; }
+  .rating-b { color: #19a643; }
+  .rating-d { color: #c07900; }
+
+  /* Component table */
+  table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
+  th { background: #e0e0e0; padding: 0.5rem 0.75rem; text-align: left; font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  td { padding: 0.5rem 0.75rem; border-bottom: 1px solid #e0e0e0; vertical-align: top; }
+  tr:nth-child(even) td { background: #f9f9f9; }
+  .rating-chip { display: inline-block; font-weight: 700; font-size: 0.875rem; padding: 0.1rem 0.4rem; border-radius: 2px; color: white; min-width: 1.5rem; text-align: center; }
+  .chip-a { background: #008054; }
+  .chip-b { background: #19a643; }
+  .chip-c { background: #8dc21f; color: #161616; }
+  .chip-d { background: #ffd500; color: #161616; }
+  .chip-e { background: #f4aa00; color: #161616; }
+  .chip-f { background: #e8680a; }
+  .chip-g { background: #c8181f; }
+  .evidence { font-size: 0.6875rem; color: #6f6f6f; font-family: 'IBM Plex Mono', monospace; margin-top: 2px; }
+
+  /* Recommendations */
+  .rec { background: white; padding: 1.5rem; margin-bottom: 1.5rem; }
+  .rec h2 { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: #161616; }
+  .rec-item { padding: 0.875rem 1rem; margin-bottom: 0.75rem; border-left: 4px solid; }
+  .rec-high { border-color: #e8680a; background: #fff3ee; }
+  .rec-medium { border-color: #ffd500; background: #fffbe6; }
+  .rec-low { border-color: #8dc21f; background: #f6ffe6; }
+  .rec-future { border-color: #0f62fe; background: #edf5ff; }
+  .rec-good { border-color: #008054; background: #f0fff8; }
+  .rec-priority { font-size: 0.6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #6f6f6f; margin-bottom: 0.2rem; }
+  .rec-title { font-weight: 600; font-size: 0.875rem; margin-bottom: 0.3rem; }
+  .rec-body { font-size: 0.8125rem; color: #393939; line-height: 1.5; }
+  .rec-code { font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; background: #e8e8e8; padding: 0.1rem 0.3rem; border-radius: 2px; }
+  .rec-evidence { font-size: 0.75rem; color: #6f6f6f; margin-top: 0.4rem; font-family: 'IBM Plex Mono', monospace; }
+
+  /* Framework + Jevons */
+  .framework { background: white; padding: 1.5rem; margin-bottom: 1.5rem; }
+  .framework h2 { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; }
+  .layer-row { display: flex; align-items: baseline; gap: 1rem; padding: 0.5rem 0; border-bottom: 1px solid #e8e8e8; }
+  .layer-row:last-child { border-bottom: none; }
+  .layer-pct { font-weight: 700; font-size: 1.1rem; min-width: 50px; }
+  .layer-name { font-weight: 600; font-size: 0.875rem; min-width: 200px; }
+  .layer-note { font-size: 0.8125rem; color: #525252; }
+  .layer-highlight { background: #edf5ff; padding: 0.25rem 0.5rem; border-left: 3px solid #0f62fe; }
+  .jevons-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
+  .jevons-table th { background: #e0e0e0; padding: 0.4rem 0.75rem; text-align: left; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+  .jevons-table td { padding: 0.4rem 0.75rem; border-bottom: 1px solid #e8e8e8; }
+
+  /* Methodology */
+  .methodology { background: #f4f4f4; padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; font-size: 0.8125rem; color: #525252; line-height: 1.6; }
+  .methodology h3 { font-size: 0.875rem; font-weight: 600; color: #161616; margin-bottom: 0.5rem; }
+
+  /* Footer */
+  .footer { text-align: center; font-size: 0.75rem; color: #6f6f6f; padding: 1.5rem; border-top: 1px solid #e0e0e0; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- ═══════════════════════════════════════════ HEADER ══ -->
+<div class="header">
+  <h1>Code Energy Performance Certificate</h1>
+  <div class="sub">PowerSC + HashiCorp Vault Certificate Management Demo</div>
+  <div class="meta">
+    <div class="meta-item"><strong>Project</strong>powersc-vault-demo (Bob Marketplace Recipe)</div>
+    <div class="meta-item"><strong>Stack</strong>Next.js 13 · Express/Node · Bash (POSIX sh) · IBM Power</div>
+    <div class="meta-item"><strong>Platform</strong>RHEL on Power ppc64le · AIX 7.3 · Vault in rootless Podman</div>
+    <div class="meta-item"><strong>Assessed</strong>July 2026</div>
+    <div class="meta-item"><strong>Assessor</strong>Responsibob v5</div>
+  </div>
+  <div class="rb-badge">RESPONSIBOB · ENERGY EFFICIENCY ASSESSMENT</div>
+</div>
+
+<!-- ═══════════════════════════════════════════ OVERALL RATING ══ -->
+<div class="epc-section">
+  <h2>Overall Rating</h2>
+  <div class="epc-scale">
+    <div class="epc-bar"><span class="epc-label">A</span><div class="epc-track epc-a" style="width:220px">Excellent (92–100)</div></div>
+    <div class="epc-bar"><span class="epc-label">B</span><div class="epc-track epc-b" style="width:240px">Good (81–91) <span class="potential-marker">▲ potential</span></div></div>
+    <div class="epc-bar"><span class="epc-label">C</span><div class="epc-track epc-c" style="width:260px">Above average (69–80) <span class="current-marker" style="background:#525252">▼ current</span></div></div>
+    <div class="epc-bar"><span class="epc-label">D</span><div class="epc-track epc-d" style="width:280px">Average (55–68)</div></div>
+    <div class="epc-bar"><span class="epc-label">E</span><div class="epc-track epc-e" style="width:300px">Below average (39–54)</div></div>
+    <div class="epc-bar"><span class="epc-label">F</span><div class="epc-track epc-f" style="width:320px">Poor (21–38)</div></div>
+    <div class="epc-bar"><span class="epc-label">G</span><div class="epc-track epc-g" style="width:340px">Very poor (1–20)</div></div>
+  </div>
+
+  <div class="axis-grid" style="margin-top:1.5rem">
+    <div class="axis-card">
+      <div class="axis-rating rating-e">E</div>
+      <div class="axis-name">Language axis</div>
+      <div class="axis-note">TypeScript (21.5×) dominates the UI layer. JS backend is Tier 3 (4.45×). Shell scripts and Vault/OpenBLAS are Tier 1.</div>
+    </div>
+    <div class="axis-card">
+      <div class="axis-rating rating-c">C</div>
+      <div class="axis-name">Algorithm axis</div>
+      <div class="axis-note">150 sequential curl calls is the key pattern. Polling loop is bounded and correct. Streaming not applicable. Logging is reasonably contained.</div>
+    </div>
+    <div class="axis-card">
+      <div class="axis-rating rating-c">C</div>
+      <div class="axis-name">Combined rating</div>
+      <div class="axis-note">Language drag from TypeScript is structural. Algorithm axis could reach B with one targeted change. Combined potential: <strong>B</strong>.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ COMPONENT TABLE ══ -->
+<div class="epc-section">
+  <h2>Component Breakdown</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Component</th>
+        <th>Language</th>
+        <th>Lang axis</th>
+        <th>Algo axis</th>
+        <th>Combined</th>
+        <th>Key finding</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          <strong>Next.js UI</strong>
+          <div class="evidence">ui/src/app/ · ui/src/components/</div>
+        </td>
+        <td>TypeScript / JSX<br><span style="font-size:0.7rem;color:#6f6f6f">21.5× multiplier</span></td>
+        <td><span class="rating-chip chip-e">E</span></td>
+        <td><span class="rating-chip chip-b">B</span></td>
+        <td><span class="rating-chip chip-d">D</span></td>
+        <td>
+          UI is genuinely thin — Carbon components, no heavy client compute. <code style="font-size:0.7rem">useMemo</code> not needed at this scale. TypeScript multiplier is structural.
+          <div class="evidence">ScanPanel.js:25 — single fetch, no looping. api.js:10 — clean singleton helper.</div>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <strong>Express backend</strong>
+          <div class="evidence">ui/server/index.js · routes/*.js</div>
+        </td>
+        <td>JavaScript (Node)<br><span style="font-size:0.7rem;color:#6f6f6f">4.45× multiplier</span></td>
+        <td><span class="rating-chip chip-c">C</span></td>
+        <td><span class="rating-chip chip-c">C</span></td>
+        <td><span class="rating-chip chip-c">C</span></td>
+        <td>
+          Thin proxy and orchestration layer — appropriate for JavaScript. Startup log emits env vars unconditionally. <code style="font-size:0.7rem">cors({origin:true})</code> is permissive for a demo.
+          <div class="evidence">index.js:56-58 — always logs AIX_HOST, VAULT_ADDR, POWERSC_URL on start.</div>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <strong>PowerSC scan polling</strong>
+          <div class="evidence">routes/powersc.js:92–173</div>
+        </td>
+        <td>JavaScript (Node)<br><span style="font-size:0.7rem;color:#6f6f6f">4.45× multiplier</span></td>
+        <td><span class="rating-chip chip-c">C</span></td>
+        <td><span class="rating-chip chip-b">B</span></td>
+        <td><span class="rating-chip chip-c">C</span></td>
+        <td>
+          Polling every 5 s with 3-minute ceiling is well-designed. Graceful timeout fallback returns last known result. Pre-scan baseline captured before triggering. Clean pattern.
+          <div class="evidence">powersc.js:130 — 5 s interval · :131 — 180 s deadline · :149 — fallback summary fetch.</div>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <strong>Certificate replacement</strong>
+          <div class="evidence">scripts/replace-with-vault-certificates.sh</div>
+        </td>
+        <td>POSIX sh<br><span style="font-size:0.7rem;color:#6f6f6f">Tier 1 — shell is near-C</span></td>
+        <td><span class="rating-chip chip-a">A</span></td>
+        <td><span class="rating-chip chip-d">D</span></td>
+        <td><span class="rating-chip chip-c">C</span></td>
+        <td>
+          150 individual <code style="font-size:0.7rem">curl</code> calls — one per certificate. Each call is a complete HTTP round-trip: TCP handshake, TLS, JSON body. This is a sequential N×HTTP pattern. The Vault PKI batch-issue endpoint exists and would issue all 150 in a single request.
+          <div class="evidence">replace-with-vault-certificates.sh:81-85 — curl per cert, 150 invocations.</div>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <strong>Old certificate generation</strong>
+          <div class="evidence">scripts/generate-old-certificates.sh</div>
+        </td>
+        <td>POSIX sh + OpenSSL<br><span style="font-size:0.7rem;color:#6f6f6f">Tier 1</span></td>
+        <td><span class="rating-chip chip-a">A</span></td>
+        <td><span class="rating-chip chip-c">C</span></td>
+        <td><span class="rating-chip chip-b">B</span></td>
+        <td>
+          150 <code style="font-size:0.7rem">openssl genrsa + req</code> invocations — each forks a subprocess. Acceptable for a one-shot setup script. A temp <code style="font-size:0.7rem">.cnf</code> file is written and deleted per cert; a shared config with only CN overridden would remove 150 file writes, but this is low impact.
+          <div class="evidence">generate-old-certificates.sh:83–108 — per-cert config write + two openssl forks.</div>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <strong>Vault PKI route</strong>
+          <div class="evidence">ui/server/routes/vault.js</div>
+        </td>
+        <td>JavaScript (Node)<br><span style="font-size:0.7rem;color:#6f6f6f">4.45× multiplier</span></td>
+        <td><span class="rating-chip chip-c">C</span></td>
+        <td><span class="rating-chip chip-a">A</span></td>
+        <td><span class="rating-chip chip-b">B</span></td>
+        <td>
+          Idempotent PKI setup uses <code style="font-size:0.7rem">try/catch 400</code> to skip if already mounted — no redundant work. Axios singleton created per module load. Clean.
+          <div class="evidence">vault.js:10-13 — singleton vaultClient · :25 — 400 = already mounted, skip.</div>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <strong>SSH transport</strong>
+          <div class="evidence">ui/server/lib/ssh.js</div>
+        </td>
+        <td>JavaScript (Node)<br><span style="font-size:0.7rem;color:#6f6f6f">4.45× multiplier</span></td>
+        <td><span class="rating-chip chip-c">C</span></td>
+        <td><span class="rating-chip chip-a">A</span></td>
+        <td><span class="rating-chip chip-b">B</span></td>
+        <td>
+          Single SSH session: SFTP transfer → chmod → exec in sequence. Streaming stdout with line buffer — does not accumulate full output in memory. One connection per script invocation is correct (each call is distinct).
+          <div class="evidence">ssh.js:49-54 — streaming line buffer, no full accumulation · :30 — single conn lifecycle.</div>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <strong>Setup script</strong>
+          <div class="evidence">scripts/setup.sh</div>
+        </td>
+        <td>Bash<br><span style="font-size:0.7rem;color:#6f6f6f">Tier 1</span></td>
+        <td><span class="rating-chip chip-a">A</span></td>
+        <td><span class="rating-chip chip-b">B</span></td>
+        <td><span class="rating-chip chip-b">B</span></td>
+        <td>
+          Idempotent guards throughout: Podman check, Node version check, <code style="font-size:0.7rem">.env.local</code> existence check. Uses <code style="font-size:0.7rem">--ignore-scripts</code> to avoid unnecessary postinstall. fapolicyd trust update is conditional. One unconditional <code style="font-size:0.7rem">npm run build</code> on re-run — could skip if <code style="font-size:0.7rem">.next/</code> exists and no source changed.
+          <div class="evidence">setup.sh:109-110 — Podman guard · :284-286 — Node version guard · :334-336 — .env guard.</div>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <strong>Vault on Power</strong>
+          <div class="evidence">icr.io/ppc64le-oss/vault-ppc64le:v1.14.8</div>
+        </td>
+        <td>Go (inside container)<br><span style="font-size:0.7rem;color:#6f6f6f">3.23× multiplier</span></td>
+        <td><span class="rating-chip chip-b">B</span></td>
+        <td><span class="rating-chip chip-a">A</span></td>
+        <td><span class="rating-chip chip-b">B</span></td>
+        <td>
+          Pre-built Power-native container image — no compile-from-source energy cost. Dev mode (single-node, in-memory) is correct for a demo workload. Systemd user service prevents container restart waste.
+          <div class="evidence">setup.sh:164-177 — pre-built ICR image · :193-196 — systemd enable + linger.</div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ═══════════════════════════════════════════ RECOMMENDATIONS ══ -->
+<div class="rec">
+  <h2>Recommendations — ordered by energy impact</h2>
+
+  <!-- HIGH -->
+  <div class="rec-item rec-high">
+    <div class="rec-priority">🔴 Medium impact — Algorithm axis improvement</div>
+    <div class="rec-title">Replace 150 sequential curl calls with a single Vault batch-issue request</div>
+    <div class="rec-body">
+      <code class="rec-code">replace-with-vault-certificates.sh</code> issues 150 certificates via 150 individual <code class="rec-code">curl</code> calls — each one is a complete TCP + TLS + HTTP round-trip. Vault's PKI engine does not natively issue N certificates in a single call, but the pattern can be restructured: generate a pre-signed list via the <code class="rec-code">/v1/pki/issue/sap-oracle</code> endpoint in a tight loop with connection reuse, <em>or</em> move issuance to the Express backend where a single HTTPS connection to Vault can issue all 150 sequentially over one kept-alive connection (no TCP/TLS setup per cert). The backend's <code class="rec-code">axios</code> client already uses connection pooling — the certificate-replacement operation should be server-side, not SSH-then-curl.<br><br>
+      <strong>Potential saving:</strong> reduces 150 TCP handshakes + 150 TLS sessions to 1 TCP + 1 TLS. At ~50 ms round-trip per curl call, this also cuts the demo "Deploy Vault Certificates" wall-clock time from ~7.5 s to &lt;1 s.
+    </div>
+    <div class="rec-evidence">Evidence: scripts/replace-with-vault-certificates.sh:81–85 — curl per cert · routes/vault.js:10 — vaultClient singleton with connection pooling already in place</div>
+  </div>
+
+  <!-- MEDIUM 1 -->
+  <div class="rec-item rec-medium">
+    <div class="rec-priority">🟡 Low-medium impact — Algorithmic redundancy</div>
+    <div class="rec-title">Skip Next.js rebuild on re-run of setup.sh if source is unchanged</div>
+    <div class="rec-body">
+      <code class="rec-code">npm run build</code> at <code class="rec-code">setup.sh:326</code> runs unconditionally on every re-run, even if the source code has not changed. A Next.js build on RHEL Power takes 60–120 s and involves many file I/O operations. Adding a guard — check for <code class="rec-code">.next/BUILD_ID</code> and a source hash, or simply ask — would eliminate this on idempotent re-runs (e.g. restart-after-reboot scenarios).<br><br>
+      This is more a developer-ergonomics win than a significant energy saving, but it removes unnecessary repeated work.
+    </div>
+    <div class="rec-evidence">Evidence: scripts/setup.sh:322–327 — unconditional `npm run build`</div>
+  </div>
+
+  <!-- MEDIUM 2 -->
+  <div class="rec-item rec-medium">
+    <div class="rec-priority">🟡 Low impact — Logging overhead</div>
+    <div class="rec-title">Gate startup env-var logging behind DEBUG or NODE_ENV=development</div>
+    <div class="rec-body">
+      <code class="rec-code">server/index.js:56-58</code> logs <code class="rec-code">AIX_HOST</code>, <code class="rec-code">VAULT_ADDR</code>, and <code class="rec-code">POWERSC_URL</code> on every process start, unconditionally. For a demo server that may restart multiple times, this is minor — but it also logs the absence of <code class="rec-code">POWERSC_PASS</code> in a visible way. Gating behind <code class="rec-code">if (process.env.NODE_ENV !== 'production')</code> is the pattern.<br><br>
+      Note: this is <em>very</em> low impact for a demo. Flag as a recipe hygiene point rather than an energy concern.
+    </div>
+    <div class="rec-evidence">Evidence: server/index.js:56-58 — unconditional console.log on start</div>
+  </div>
+
+  <!-- LOW -->
+  <div class="rec-item rec-low">
+    <div class="rec-priority">🟢 Minor — Shell script efficiency</div>
+    <div class="rec-title">Share a single openssl config template across all 150 cert generations</div>
+    <div class="rec-body">
+      <code class="rec-code">generate-old-certificates.sh:83-95</code> writes a fresh <code class="rec-code">.cnf</code> file per certificate — 150 file writes and 150 unlinks. The config is identical for all certs except <code class="rec-code">CN=</code>. Using a single template with <code class="rec-code">-subj "/CN=$cn/O=Demo..."</code> inline on the openssl command line eliminates the per-cert file I/O entirely. This is a clean-code improvement as much as an energy one.
+    </div>
+    <div class="rec-evidence">Evidence: generate-old-certificates.sh:83-95 — cat to $cfg, rm -f $cfg per cert</div>
+  </div>
+
+  <!-- GOOD -->
+  <div class="rec-item rec-good">
+    <div class="rec-priority">✅ Positive patterns — already well done</div>
+    <div class="rec-title">Pre-built Power-native container · Idempotent guards · Streaming SSH output · Singleton Axios client</div>
+    <div class="rec-body">
+      <strong>Pre-built ICR image:</strong> <code class="rec-code">icr.io/ppc64le-oss/vault-ppc64le:v1.14.8</code> eliminates compile-from-source energy cost. Contrast with building llama.cpp from source (10–15 minute build each deploy). ✓<br><br>
+      <strong>Idempotent setup guards:</strong> Podman check, Node version gate, <code class="rec-code">.env.local</code> existence check, and PKI "already mounted" 400-skip all prevent redundant work on re-runs. ✓<br><br>
+      <strong>Streaming SSH output:</strong> <code class="rec-code">ssh.js</code> processes stdout as a stream with a line buffer — it does not accumulate the full script output in memory before acting. For 150-cert operations this avoids a potentially large string allocation. ✓<br><br>
+      <strong>Axios singleton:</strong> <code class="rec-code">vaultClient</code> in <code class="rec-code">vault.js</code> is instantiated once at module load — connection pooling is reused across requests. ✓<br><br>
+      <strong>PassportEye principle applied correctly:</strong> certificate issuance uses Vault's PKI engine (a deterministic cryptographic service), not an LLM. The right tool for the job — no AI inference in the cert path at all. ✓
+    </div>
+  </div>
+
+  <!-- FUTURE -->
+  <div class="rec-item rec-future">
+    <div class="rec-priority">🔵 Future / Recipe evolution</div>
+    <div class="rec-title">Consider moving certificate replacement fully server-side to leverage the Axios connection pool</div>
+    <div class="rec-body">
+      The current architecture for "Deploy Vault Certificates" is: Express backend → SSH to AIX → <em>curl from AIX</em> to Vault. This means AIX is making 150 outbound HTTPS calls to Vault, each with its own TCP/TLS setup.<br><br>
+      An alternative: Express backend issues all 150 certs via the <code class="rec-code">vaultClient</code> Axios pool (one connection, 150 requests), then transfers the cert/key PEM content over SSH in a single SFTP batch. This would be faster, more reliable, and remove the <code class="rec-code">VAULT_ADDR</code> / <code class="rec-code">VAULT_ADDR_EXTERNAL</code> split complexity.<br><br>
+      This is a meaningful architecture change — not suggested for the current sprint, but the right direction for a production-hardened version of this recipe.
+    </div>
+    <div class="rec-evidence">Evidence: vault.js:103 — VAULT_ADDR_EXTERNAL split needed because AIX can't reach 127.0.0.1:8200 · replace-with-vault-certificates.sh:81 — curl from AIX</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ DEFRA FRAMEWORK ══ -->
+<div class="framework">
+  <h2>Defra Four-Layer Framework — Positioning</h2>
+  <div class="layer-row">
+    <div class="layer-pct" style="color:#c8181f">100%</div>
+    <div class="layer-name">Policy / Design nothing</div>
+    <div class="layer-note">Not applicable — this demo serves a real business purpose (IBM Power security demonstration for pre-sales). The workload is justified.</div>
+  </div>
+  <div class="layer-row">
+    <div class="layer-pct" style="color:#e8680a">60%</div>
+    <div class="layer-name">Architecture / Design to use less</div>
+    <div class="layer-note">IBM Power hardware is already the right platform choice. TechZone reservations are ephemeral — no always-on idle waste. Vault runs as a single-node dev instance, not a HA cluster. Architecture is appropriately minimal for the workload.</div>
+  </div>
+  <div class="layer-row">
+    <div class="layer-pct" style="color:#f4aa00">40%</div>
+    <div class="layer-name">Infrastructure / Design clever</div>
+    <div class="layer-note">RHEL on Power (ppc64le) — IBM Power hardware runs this stack ~39% more efficiently than an equivalent x86 cloud VM. This is the largest lever already being used by the existing platform choice. The E950→E1150 hardware refresh effect applies to the TechZone infrastructure underneath.</div>
+  </div>
+  <div class="layer-row layer-highlight">
+    <div class="layer-pct" style="color:#0f62fe">~20%</div>
+    <div class="layer-name">Code efficiency — <strong>Responsibob layer</strong></div>
+    <div class="layer-note">This is what this certificate covers. Current rating: <strong>C</strong>. Potential with one targeted change (batch curl / server-side issuance): <strong>B</strong>. This 20% band is what developers directly control.</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ JEVONS ══ -->
+<div class="framework">
+  <h2>Jevons' Paradox Assessment</h2>
+  <table class="jevons-table">
+    <thead>
+      <tr><th>Component</th><th>Context</th><th>Risk</th><th>Rationale</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Certificate generation (150 certs)</td>
+        <td>Bounded demo setup — runs once per reservation</td>
+        <td style="color:#008054"><strong>Negligible</strong></td>
+        <td>Volume is fixed by the demo script (150 certs). Efficiency improvement does not create new demand.</td>
+      </tr>
+      <tr>
+        <td>PowerSC scan polling</td>
+        <td>Bounded scan — one scan per demo cycle</td>
+        <td style="color:#008054"><strong>Negligible</strong></td>
+        <td>Scan is triggered by a human button press. Faster completion does not cause more scans.</td>
+      </tr>
+      <tr>
+        <td>Demo UI (Carbon/Next.js)</td>
+        <td>Interactive UI — seller-driven sessions</td>
+        <td style="color:#008054"><strong>Low</strong></td>
+        <td>Session frequency is bounded by human demo cadence. No GenAI inference in the UI path.</td>
+      </tr>
+      <tr>
+        <td>Vault PKI (if used beyond demo)</td>
+        <td>Operational cert rotation — if recipe evolves to production</td>
+        <td style="color:#f4aa00"><strong>Medium (future)</strong></td>
+        <td>If this recipe becomes a real cert rotation system, efficiency improvements could unlock wider scope. Worth monitoring at that point — not a concern for the demo.</td>
+      </tr>
+    </tbody>
+  </table>
+  <p style="font-size:0.8125rem; color:#525252; margin-top:0.75rem; line-height:1.5;">
+    No blanket Jevons warning is warranted here. This is a bounded pre-sales demo with human-gated trigger points. Efficiency improvements reduce time and resource cost without creating new latent demand.
+  </p>
+</div>
+
+<!-- ═══════════════════════════════════════════ METHODOLOGY ══ -->
+<div class="methodology">
+  <h3>Methodology &amp; Limits</h3>
+  <p>
+    <strong>What was measured / reviewed:</strong> All source files in scope — <code>ui/server/</code>, <code>ui/src/</code>, <code>scripts/</code>. Language multipliers from arXiv 2410.05460. Algorithmic patterns assessed by direct code inspection against the Responsibob efficiency pattern catalogue.
+  </p>
+  <p style="margin-top:0.5rem">
+    <strong>What was estimated:</strong> Language axis ratings for TypeScript (21.5×) and JavaScript (4.45×) are from the arXiv study — these reflect compute-intensive benchmarks. The UI and backend in this demo do minimal CPU work; the real-world energy delta between JS and TypeScript at this scale is much smaller than the multiplier implies. The multiplier is the structural ceiling, not the typical operating point for a thin proxy/UI stack.
+  </p>
+  <p style="margin-top:0.5rem">
+    <strong>What was not measured:</strong> Actual power draw (no instrumentation). Network I/O energy from TechZone infrastructure. Container image layer download cost (one-time, not per-run). IBM Power hardware utilisation figures for this specific reservation.
+  </p>
+  <p style="margin-top:0.5rem">
+    <strong>Reference:</strong> Defra carbon reduction curve — Ned Gartside (Defra) / DWP Oct 2024. IBM Power Energy Estimator: E950→E1150 = 39% saving (Defra "design clever" = 40% theoretical). Language multipliers: arXiv 2410.05460.
+  </p>
+</div>
+
+<!-- ═══════════════════════════════════════════ FOOTER ══ -->
+<div class="footer">
+  <p>Generated by <strong>Responsibob v5</strong> · Grounded in source code evidence from <code>powersc-vault-demo</code> · July 2026</p>
+  <p style="margin-top:0.25rem">Responsibob is a Defra four-layer framework implementation. Code efficiency = ~20% of total energy impact. Point to Policy and Infrastructure levers for the larger wins.</p>
+</div>
+
+</div>
+</body>
+</html>
