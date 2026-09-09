@@ -36,12 +36,12 @@ function runScriptOnAIX({ host, username, privateKeyPath, localScript, remoteScr
         const writeStream = sftp.createWriteStream(remoteScript);
 
         writeStream.on('close', () => {
-          // Step 2: chmod + run
+          // Step 2: strip Windows CR, chmod + run
           const envExports = Object.entries(env)
             .map(([k, v]) => `export ${k}="${v}"`)
             .join('; ');
           const prefix = envExports ? `${envExports}; ` : '';
-          const runCmd = `chmod +x ${remoteScript} && ${prefix}${sudo ? 'sudo -E ' : ''}${remoteScript}`;
+          const runCmd = `tr -d '\\r' < ${remoteScript} > ${remoteScript}.tmp && mv ${remoteScript}.tmp ${remoteScript}; chmod +x ${remoteScript} && ${prefix}${sudo ? 'sudo -E ' : ''}${remoteScript}`;
 
           conn.exec(runCmd, (err, stream) => {
             if (err) { conn.end(); return reject(err); }

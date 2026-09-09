@@ -36,13 +36,12 @@
 #  12. Start Express backend (port 3002) and Next.js frontend (port 3001)
 #
 # What this script does NOT do:
-#   - Generate demo certificates on AIX (use the UI: "Generate Demo Environment")
-#   - Trigger PowerSC scans (use the UI scan buttons, or PowerSC UI directly)
 #   - Replace certificates with Vault (use the UI: "Deploy Vault Certificates")
-#   - Set up PowerSC keystore / endpoints (manual UI step, see COLLECTION.md Step 4)
+#   - Trigger the AFTER scan (use the UI scan button after Vault deployment)
 #
 # After this script completes:
 #   Open http://<pvm2-fqdn>:3001 in your browser.
+#   The BEFORE state (150 weak certs, low compliance score) is already loaded.
 #
 # Author: EMEA AI on IBM Power Squad
 ################################################################################
@@ -63,11 +62,13 @@ step() { echo -e "\n${BOLD}${BLUE}── $* ──${NC}"; }
 # Accept --flag value or fall back to environment variables
 while [[ $# -gt 0 ]]; do
   case $1 in
-    --vault-host)  VAULT_HOST="$2";   shift 2 ;;
-    --aix-host)    AIX_HOST="$2";     shift 2 ;;
-    --powersc-url) POWERSC_URL="$2";  shift 2 ;;
-    --ssh-key)     SSH_KEY="$2";      shift 2 ;;
-    --repo-url)    REPO_URL="$2";     shift 2 ;;
+    --vault-host)    VAULT_HOST="$2";     shift 2 ;;
+    --aix-host)      AIX_HOST="$2";       shift 2 ;;
+    --powersc-url)   POWERSC_URL="$2";    shift 2 ;;
+    --powersc-pass)  POWERSC_PASS="$2";   shift 2 ;;
+    --powersc-user)  POWERSC_USER="$2";   shift 2 ;;
+    --ssh-key)       SSH_KEY="$2";        shift 2 ;;
+    --repo-url)      REPO_URL="$2";       shift 2 ;;
     *) warn "Unknown flag: $1 (ignored)"; shift ;;
   esac
 done
@@ -75,6 +76,8 @@ done
 VAULT_HOST="${VAULT_HOST:-}"
 AIX_HOST="${AIX_HOST:-}"
 POWERSC_URL="${POWERSC_URL:-}"
+POWERSC_USER="${POWERSC_USER:-powersc-admin}"
+POWERSC_PASS="${POWERSC_PASS:-}"
 SSH_KEY="${SSH_KEY:-/home/cecuser/.ssh/techzone-key.pem}"
 REPO_URL="${REPO_URL:-https://github.com/ibm-power-demos-with-bob/powersc-vault-demo.git}"
 DEMO_DIR="${DEMO_DIR:-/home/cecuser/powersc-vault-demo}"
@@ -85,7 +88,8 @@ echo "────────────────────────�
 
 [[ -z "$VAULT_HOST" ]]   && fail "VAULT_HOST is required. Pass --vault-host <fqdn> or set the env var."
 [[ -z "$AIX_HOST" ]]     && fail "AIX_HOST is required. Pass --aix-host <fqdn> or set the env var."
-[[ -z "$POWERSC_URL" ]]  && warn "POWERSC_URL not set — PowerSC link in UI will be disabled."
+[[ -z "$POWERSC_URL" ]]  && fail "POWERSC_URL is required. Pass --powersc-url https://<pvm1-fqdn> or set the env var."
+[[ -z "$POWERSC_PASS" ]] && fail "POWERSC_PASS is required. Pass --powersc-pass <password> or set the env var."
 [[ ! -f "$SSH_KEY" ]]    && fail "SSH key not found at $SSH_KEY.
   The TechZone private key must be present on this host (pvm2) before running setup.
   Copy it from your laptop first:
@@ -98,7 +102,8 @@ AIX_HOSTNAME="${AIX_HOST%%.*}"
 info "Vault host (pvm2):  $VAULT_HOST"
 info "AIX host (pvm3):    $AIX_HOST"
 info "AIX hostname:       $AIX_HOSTNAME"
-info "PowerSC URL (pvm1): ${POWERSC_URL:-not set}"
+info "PowerSC URL (pvm1): $POWERSC_URL"
+info "PowerSC user:       $POWERSC_USER"
 info "SSH key:            $SSH_KEY"
 info "Repo:               $REPO_URL"
 info "Demo directory:     $DEMO_DIR"
@@ -349,15 +354,13 @@ VAULT_TOKEN=myroot
 
 POWERSC_URL=${POWERSC_URL}
 NEXT_PUBLIC_POWERSC_URL=${POWERSC_URL}
-POWERSC_USER=powersc-admin
-POWERSC_PASS=
+POWERSC_USER=${POWERSC_USER}
+POWERSC_PASS=${POWERSC_PASS}
 AIX_HOSTNAME=${AIX_HOSTNAME}
 
 API_PORT=3002
 EOF
   ok ".env.local written"
-  warn "POWERSC_PASS is blank — fill it in from TechZone reservation details to enable API scan buttons."
-  warn "Edit: $ENV_FILE"
 fi
 
 # ── Step 12: Copy SSH key to expected path ────────────────────────────────────
@@ -407,26 +410,132 @@ else
   warn "Frontend not yet responding — it may still be starting. Check ~/ui.log in 10 seconds."
 fi
 
+# ── Step 14: Deploy 150 weak certificates to AIX ─────────────────────────────
+step "Step 14: Deploy 150 weak certificates to AIX (pvm3)"
+
+# Derive the OS user from the SSH key path owner
+AIX_USER="${AIX_USER:-cecuser}"
+SCAN_FOLDER="/home/${AIX_USER}/demo-certs"
+
+SSH_OPTS="-i ${SSH_KEY} -o StrictHostKeyChecking=no -o ConnectTimeout=15"
+POWERSC_SERVER_HOST="${POWERSC_URL#https://}"
+POWERSC_SERVER_HOST="${POWERSC_SERVER_HOST#http://}"
+
+info "Uploading and running generate-old-certificates.sh on $AIX_HOST…"
+
+# Strip CRLF (Windows-safe: file may have been committed from Windows), upload, execute
+scp $SSH_OPTS "$DEMO_DIR/scripts/generate-old-certificates.sh" \
+    "${AIX_USER}@${AIX_HOST}:/tmp/_gen_certs.sh"
+
+ssh $SSH_OPTS "${AIX_USER}@${AIX_HOST}" \
+    "tr -d '\r' < /tmp/_gen_certs.sh > /tmp/gen_certs.sh && chmod +x /tmp/gen_certs.sh && SCAN_FOLDER=${SCAN_FOLDER} /tmp/gen_certs.sh && rm -f /tmp/_gen_certs.sh /tmp/gen_certs.sh"
+
+ok "150 weak certificates deployed to ${SCAN_FOLDER} on $AIX_HOST"
+
+# ── Step 15: Bootstrap PowerSC endpoint (keystore + scan folder + agent restart)
+step "Step 15: Bootstrap PowerSC endpoint"
+
+KEYSTORE_PATH="/etc/security/powersc/uiServer/${AIX_HOST}/endpointKeystore.p12"
+AGENT_KEYSTORE="/etc/security/powersc/uiAgent/endpointKeystore.p12"
+GENERATE_SCRIPT="/opt/powersc/uiServer/bin/generate_endpoint_keystore_uiServer.sh"
+API_BASE="${POWERSC_URL}/ws/powerscui"
+PROPS_FILE="/etc/security/powersc/uiAgent/quantumSafe.properties"
+
+# 15a — generate keystore on pvm01
+info "Generating endpoint keystore on pvm01 ($POWERSC_SERVER_HOST)…"
+ssh $SSH_OPTS "${AIX_USER}@${POWERSC_SERVER_HOST}" \
+    "sudo -n ${GENERATE_SCRIPT} ${AIX_HOST}"
+ok "Keystore generated on pvm01"
+
+# 15b — copy keystore pvm01 → /tmp on pvm02 (this host) → pvm03
+info "Transferring keystore to AIX (pvm03)…"
+TMP_KS="/tmp/endpointKeystore-$$.p12"
+scp $SSH_OPTS "${AIX_USER}@${POWERSC_SERVER_HOST}:${KEYSTORE_PATH}" "$TMP_KS"
+scp $SSH_OPTS "$TMP_KS" "${AIX_USER}@${AIX_HOST}:/tmp/endpointKeystore.p12"
+rm -f "$TMP_KS"
+
+# 15c — install keystore, write scan folder props, restart agent on pvm03
+info "Installing keystore and configuring scan folder on AIX (pvm03)…"
+ssh $SSH_OPTS -t "${AIX_USER}@${AIX_HOST}" bash -s << AIXEOF
+sudo -n mkdir -p /etc/security/powersc/uiAgent
+sudo -n cp /tmp/endpointKeystore.p12 ${AGENT_KEYSTORE}
+sudo -n chmod 600 ${AGENT_KEYSTORE}
+sudo -n chown root:security ${AGENT_KEYSTORE}
+rm -f /tmp/endpointKeystore.p12
+
+# Write quantumSafe.properties with the demo-certs scan folder
+sudo -n sh -c 'cat > ${PROPS_FILE} << '"'"'ENDPROPS'"'"'
+scanType=all
+scanFolders=${SCAN_FOLDER}
+portScan=false
+fileExtensions=.key,.pem,.pkcs8,.p8,.pk8,.pvk,.pub,.keystore,.jks,.p12,.pfx,.crt,.cer,.der,.p7b,.p7c,.spc,.crl,.cert,.arm,.ca-bundle,.kdb
+ENDPROPS
+'
+
+# Restart agent — use SRC commands (AIX standard)
+sudo -n stopsrc -s pscuiagent 2>/dev/null || true
+sleep 3
+sudo -n startsrc -s pscuiagent
+AIXEOF
+
+info "Waiting 20s for agent registration with PowerSC…"
+sleep 20
+ok "PowerSC endpoint configured and agent running on $AIX_HOST"
+
+# ── Step 16: Trigger initial BEFORE scan ─────────────────────────────────────
+step "Step 16: Trigger initial BEFORE scan"
+
+info "Triggering PowerSC Quantum Safety scan via API…"
+SCAN_RESP=$(curl -sk -u "${POWERSC_USER}:${POWERSC_PASS}" \
+  -X POST -H "Content-Type: application/json" \
+  -d "{\"orders\":[{\"commandName\":\"runQuantumSafeScan\",\"elementId\":\"${AIX_HOST}\"}]}" \
+  "${API_BASE}/command")
+
+info "Scan trigger response: $SCAN_RESP"
+
+# Poll for scan completion — wait up to 3 minutes
+info "Polling for scan results (up to 3 minutes)…"
+PRE_SCAN_TIME=0
+DEADLINE=$(( $(date +%s) + 180 ))
+SCAN_DONE=false
+
+while [[ $(date +%s) -lt $DEADLINE ]]; do
+  sleep 5
+  SUMMARY=$(curl -sk -u "${POWERSC_USER}:${POWERSC_PASS}" \
+    "${API_BASE}/quantumsafe/summary?endpoint=${AIX_HOST}")
+  SCAN_TIME=$(echo "$SUMMARY" | grep -o '"scanTime":[0-9]*' | grep -o '[0-9]*' || echo "0")
+  if [[ -n "$SCAN_TIME" && "$SCAN_TIME" -gt "$PRE_SCAN_TIME" && "$SCAN_TIME" -gt 0 ]]; then
+    SCAN_DONE=true
+    break
+  fi
+done
+
+if [[ "$SCAN_DONE" == "true" ]]; then
+  ok "Initial BEFORE scan complete — results available in PowerSC"
+else
+  warn "Scan did not complete within 3 minutes. It may still be running."
+  warn "The UI will show the scan results once PowerSC finishes."
+fi
+
 # ── Summary ───────────────────────────────────────────────────────────────────
 echo ""
 echo -e "${BOLD}${GREEN}────────────────────────────────────────────────────────────${NC}"
-echo -e "${BOLD}${GREEN}  Setup complete${NC}"
+echo -e "${BOLD}${GREEN}  Setup complete — demo is ready to present${NC}"
 echo -e "${BOLD}${GREEN}────────────────────────────────────────────────────────────${NC}"
 echo ""
 echo -e "  ${BOLD}Demo UI:${NC}       http://${VAULT_HOST}:3001"
 echo -e "  ${BOLD}Backend API:${NC}   http://${VAULT_HOST}:3002/health"
 echo -e "  ${BOLD}Vault UI:${NC}      http://${VAULT_HOST}:8200"
-echo -e "  ${BOLD}PowerSC UI:${NC}    ${POWERSC_URL:-not configured}"
+echo -e "  ${BOLD}PowerSC UI:${NC}    ${POWERSC_URL}"
 echo ""
-echo -e "  ${BOLD}Next steps:${NC}"
-echo "  1. Open the demo UI in your browser (link above)"
-echo "  2. Complete PowerSC UI setup if not already done:"
-echo "     — Generate keystore for AIX client (pvm3)"
-echo "     — Configure quantum safe scan paths: sap, oracle, integration, loadbalancer, proxy"
-echo "     (See COLLECTION.md Step 4 for the exact clicks)"
-echo "  3. Fill in POWERSC_PASS in ui/.env.local then restart the backend"
-echo "     to enable API-driven scan buttons (optional — manual scan always works)"
-echo "  4. In the demo UI: click 'Generate Demo Environment' to deploy old certificates"
+echo -e "  ${BOLD}Demo flow (presenter):${NC}"
+echo "  1. Open the demo UI — the BEFORE scan results are already loaded on the"
+echo "     Challenge page (150 weak certs, low compliance score)."
+echo "  2. Walk the client through the Challenge and Customer Context pages."
+echo "  3. On the Solution page, click 'Deploy Vault Certificates'."
+echo "     Vault issues 150 new 24-hour certs and deploys them to AIX (~2 minutes)."
+echo "  4. Click 'Run AFTER Scan' — PowerSC rescans and shows the transformed estate."
+echo "  5. Continue to the Results page for the executive summary."
 echo ""
 echo -e "  ${YELLOW}Logs:${NC} ~/server.log  ~/ui.log"
 echo ""

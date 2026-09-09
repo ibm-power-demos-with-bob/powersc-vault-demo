@@ -5,7 +5,6 @@ const http = require('http');
 const cors = require('cors');
 const { Server } = require('socket.io');
 
-const setupRoutes = require('./routes/setup');
 const vaultRoutes = require('./routes/vault');
 const metricsRoutes = require('./routes/metrics');
 const powerscRoutes = require('./routes/powersc');
@@ -43,7 +42,6 @@ app.use((req, _res, next) => {
 });
 
 // Routes
-app.use('/api/setup', setupRoutes);
 app.use('/api/vault', vaultRoutes);
 app.use('/api/metrics', metricsRoutes);
 app.use('/api/powersc', powerscRoutes);

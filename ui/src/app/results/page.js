@@ -15,6 +15,7 @@ import {
   NumberInput,
 } from '@carbon/react';
 import { Launch, Renew, ArrowLeft } from '@carbon/icons-react';
+import ScanPanel from '../../components/ScanPanel/ScanPanel';
 import styles from './results-page.module.scss';
 import { apiBase } from '../../lib/api';
 
@@ -41,6 +42,7 @@ export default function ResultsPage() {
   const [roi, setRoi] = useState(null);
   // Live metrics from PowerSC
   const [liveMetrics, setLiveMetrics] = useState(null);
+  const [afterScanDone, setAfterScanDone] = useState(false);
 
   // Fetch current summary on mount
   useEffect(() => {
@@ -61,6 +63,11 @@ export default function ResultsPage() {
       total: avoidedDowntimeCost + manualHoursSaved,
     });
   }, [outagesPerYear, hoursPerMonth]);
+
+  function handleAfterScanComplete(data) {
+    if (data && data.complianceScore !== undefined) setLiveMetrics(data);
+    setAfterScanDone(true);
+  }
 
   // Build display metrics — replace compliance tile with live value when available
   const afterMetrics = AFTER_METRICS_DEFAULT.map(m => {
@@ -195,17 +202,32 @@ export default function ResultsPage() {
         </Tile>
       </Column>
 
+      {/* AFTER scan */}
+      <Column lg={16} md={8} sm={4} className={styles.scanSection}>
+        <Tile className={styles.scanTile}>
+          <h3 className={styles.sectionHeading}>Verify the AFTER State</h3>
+          <ScanPanel
+            label="Run AFTER Scan"
+            description="Trigger a PowerSC Quantum Safety scan now to confirm the transformation — all 150 certificates replaced with Vault-issued 24h certs, modern cryptography, high compliance score."
+            powerscUrl={powerscUrl}
+            onComplete={handleAfterScanComplete}
+          />
+        </Tile>
+      </Column>
+
       {/* Actions */}
       <Column lg={16} md={8} sm={4} className={styles.actionsRow}>
-        <Link href={powerscUrl} target="_blank" renderIcon={Launch} className={styles.powerscLink}>
-          Open PowerSC — view final compliance report
-        </Link>
         <Button renderIcon={ArrowLeft} href="/" kind="secondary" className={styles.actionButton}>
           Back to The Challenge
         </Button>
         <Button renderIcon={Renew} href="/solution" kind="ghost" className={styles.actionButton}>
           Run Demo Again
         </Button>
+        {powerscUrl && powerscUrl !== '#' && (
+          <Link href={powerscUrl} target="_blank" renderIcon={Launch} className={styles.powerscLink}>
+            Open PowerSC — full report
+          </Link>
+        )}
       </Column>
     </Grid>
   );

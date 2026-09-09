@@ -3,16 +3,14 @@ import { useState, useEffect } from 'react';
 import {
   Grid,
   Column,
-  Button,
   Tile,
   Tag,
   InlineLoading,
-  ProgressBar,
   Link,
   InlineNotification,
+  Button,
 } from '@carbon/react';
-import { Launch, Certificate, Warning, ArrowRight, User } from '@carbon/icons-react';
-import ScanPanel from '../../components/ScanPanel/ScanPanel';
+import { Launch, ArrowRight, User } from '@carbon/icons-react';
 import styles from './challenge-page.module.scss';
 import { apiBase } from '../../lib/api';
 
@@ -25,27 +23,26 @@ const METRICS_DEFAULT = [
 ];
 
 export default function ChallengePage() {
-  const [status, setStatus] = useState('idle'); // idle | running | complete | error
-  const [progress, setProgress] = useState(0);
-  const [message, setMessage] = useState('');
-  const [certsDeployed, setCertsDeployed] = useState(0);
-  const [beforeScanDone, setBeforeScanDone] = useState(false);
-  // Live metrics from PowerSC — null until loaded
+  // 'loading' | 'ready' | 'error'
+  const [scanStatus, setScanStatus] = useState('loading');
   const [liveMetrics, setLiveMetrics] = useState(null);
+  const [errorMsg, setErrorMsg]       = useState('');
 
-  // Fetch the current summary on mount so tiles show live data immediately
+  // Load the current BEFORE scan results on mount
   useEffect(() => {
     fetch(`${apiBase()}/api/powersc/summary`)
       .then(r => r.json())
-      .then(d => { if (d.complianceScore !== null && d.complianceScore !== undefined) setLiveMetrics(d); })
-      .catch(() => {}); // silently ignore — static fallback stays
+      .then(d => {
+        if (d.complianceScore !== null && d.complianceScore !== undefined) {
+          setLiveMetrics(d);
+        }
+        setScanStatus('ready');
+      })
+      .catch(err => {
+        setErrorMsg(err.message);
+        setScanStatus('error');
+      });
   }, []);
-
-  // Called by ScanPanel when a scan completes — update live metrics
-  function handleScanComplete(data) {
-    if (data && data.complianceScore !== undefined) setLiveMetrics(data);
-    setBeforeScanDone(true);
-  }
 
   // Build display metrics — replace compliance + qs tiles with live values when available
   const metrics = METRICS_DEFAULT.map(m => {
@@ -54,29 +51,6 @@ export default function ChallengePage() {
     if (m.key === 'qs') return { ...m, value: String(liveMetrics.quantumSafeCertificates ?? 0) };
     return m;
   });
-
-  async function handleGenerateCerts() {
-    setStatus('running');
-    setProgress(10);
-    setMessage('Connecting to AIX client…');
-    setCertsDeployed(0);
-
-    try {
-      const res = await fetch(`${apiBase()}/api/setup/generate-certificates`, { method: 'POST' });
-      const data = await res.json();
-
-      if (!res.ok) throw new Error(data.error || 'Failed to generate certificates');
-
-      setProgress(100);
-      setCertsDeployed(data.certificatesCreated || 150);
-      setStatus('complete');
-      setMessage('');
-    } catch (err) {
-      setStatus('error');
-      setMessage(err.message);
-      setProgress(0);
-    }
-  }
 
   const powerscUrl = process.env.NEXT_PUBLIC_POWERSC_URL || '#';
 
@@ -150,86 +124,96 @@ export default function ChallengePage() {
         </p>
       </Column>
 
-      {/* Action panel */}
+      {/* BEFORE scan results panel */}
       <Column lg={8} md={8} sm={4} className={styles.actionPanel}>
         <Tile className={styles.actionTile}>
-          <h3 className={styles.actionHeading}>Step 1: Set Up the Demo Environment</h3>
+          <h3 className={styles.actionHeading}>BEFORE State — PowerSC Scan Results</h3>
           <p className={styles.actionBody}>
-            Deploy 150 synthetic old certificates to the AIX client. These represent the
-            current state — real CA certificates from 2008–2011 with weak cryptography,
+            IBM PowerSC has already scanned the AIX estate. The results below reflect the
+            current certificate posture — 150 old certificates with weak cryptography,
             distributed across SAP, Oracle, Integration, and Infrastructure paths.
           </p>
 
-          {status === 'idle' && (
-            <Button
-              renderIcon={Certificate}
-              onClick={handleGenerateCerts}
-              className={styles.actionButton}>
-              Generate Demo Environment
-            </Button>
+          {scanStatus === 'loading' && (
+            <InlineLoading description="Loading scan results from PowerSC…" status="active" />
           )}
 
-          {status === 'running' && (
-            <div className={styles.progressBlock}>
-              <InlineLoading description={message} status="active" />
-              <ProgressBar label="Deploying certificates…" value={progress} />
-            </div>
+          {scanStatus === 'error' && (
+            <InlineNotification
+              kind="warning"
+              title="Could not reach PowerSC —"
+              subtitle="Showing estimated baseline values. Ensure POWERSC_PASS is set and the backend is running."
+              hideCloseButton
+            />
           )}
 
-          {status === 'complete' && (
+          {scanStatus === 'ready' && (
             <>
-              <InlineNotification
-                kind="success"
-                title="Environment ready —"
-                subtitle={`${certsDeployed} old certificates deployed to AIX client.`}
-                hideCloseButton
-              />
-              <ScanPanel
-                label="Run BEFORE Scan"
-                description="Trigger a PowerSC Quantum Safety scan now to capture the BEFORE state — 150 old certificates, weak crypto, low compliance. The scan takes 30–90 seconds."
-                powerscUrl={powerscUrl}
-                onComplete={handleScanComplete}
-              />
-              {beforeScanDone && (
-                <div className={styles.nextActions}>
-                  <Link href={powerscUrl} target="_blank" renderIcon={Launch} className={styles.powerscLink}>
-                    Open PowerSC — view BEFORE state
-                  </Link>
-                  <Button
-                    renderIcon={ArrowRight}
-                    href="/solution"
-                    kind="primary"
-                    className={styles.actionButton}>
-                    Continue to The Solution
-                  </Button>
+              {liveMetrics ? (
+                <div style={{
+                  background: 'var(--cds-layer-01)',
+                  border: '1px solid var(--cds-border-subtle-01)',
+                  borderLeft: '3px solid var(--cds-support-error)',
+                  padding: '1rem 1.25rem',
+                  marginTop: '1rem',
+                  marginBottom: '1rem',
+                }}>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--cds-text-secondary)', marginBottom: '0.5rem' }}>
+                    PowerSC Quantum Safety scan — BEFORE state
+                  </p>
+                  <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
+                    <div>
+                      <p style={{ fontSize: '1.75rem', fontWeight: 600, color: liveMetrics.complianceScore < 80 ? 'var(--cds-support-error)' : 'var(--cds-support-warning)', lineHeight: 1 }}>
+                        {liveMetrics.complianceScore !== null ? `${liveMetrics.complianceScore}%` : '—'}
+                      </p>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--cds-text-secondary)' }}>Compliance Score</p>
+                    </div>
+                    <div>
+                      <p style={{ fontSize: '1.75rem', fontWeight: 600, color: 'var(--cds-support-error)', lineHeight: 1 }}>
+                        {liveMetrics.weakCertificates}
+                      </p>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--cds-text-secondary)' }}>Weak Certificates</p>
+                    </div>
+                    <div>
+                      <p style={{ fontSize: '1.75rem', fontWeight: 600, color: 'var(--cds-text-primary)', lineHeight: 1 }}>
+                        {(liveMetrics.strongCertificates || 0) + (liveMetrics.quantumSafeCertificates || 0)}
+                      </p>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--cds-text-secondary)' }}>Strong / Quantum-Safe</p>
+                    </div>
+                  </div>
+                  <p style={{ fontSize: '0.6875rem', color: 'var(--cds-text-placeholder)', marginTop: '0.75rem' }}>
+                    Scan time: {liveMetrics.scanTime ? new Date(liveMetrics.scanTime).toLocaleTimeString() : '—'}
+                  </p>
                 </div>
+              ) : (
+                <InlineNotification
+                  kind="info"
+                  title="No scan results yet —"
+                  subtitle="The initial setup scan may still be running. Refresh in a moment, or check PowerSC directly."
+                  hideCloseButton
+                  style={{ marginTop: '1rem', marginBottom: '1rem' }}
+                />
               )}
-            </>
-          )}
 
-          {status === 'error' && (
-            <>
-              <InlineNotification
-                kind="error"
-                title="Error —"
-                subtitle={message}
-                hideCloseButton
-              />
-              <Button kind="ghost" onClick={() => setStatus('idle')}>
-                Try again
-              </Button>
+              <div className={styles.nextActions} style={{ marginTop: '1rem', display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center' }}>
+                {powerscUrl && powerscUrl !== '#' && (
+                  <Link href={powerscUrl} target="_blank" renderIcon={Launch} style={{ fontSize: '0.875rem' }}>
+                    Open PowerSC — full report
+                  </Link>
+                )}
+                <Button
+                  renderIcon={ArrowRight}
+                  href="/solution"
+                  kind="primary"
+                  className={styles.actionButton}>
+                  Continue to The Solution
+                </Button>
+              </div>
             </>
           )}
         </Tile>
       </Column>
 
-      {/* Footer hint */}
-      <Column lg={16} md={8} sm={4} className={styles.footerHint}>
-        <Warning size={16} />
-        <span> After clicking "Generate Demo Environment", open PowerSC to see the BEFORE
-          state — 150 old certificates, weak crypto, low compliance score. Then proceed to
-          The Solution.</span>
-      </Column>
     </Grid>
   );
 }

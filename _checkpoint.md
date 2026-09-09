@@ -14,6 +14,7 @@
 - Script fixes applied: AIX 7.3 Python3 JSON extraction handles literal newlines without crashing.
 - Environment reset to "BEFORE" state (150 weak certs on AIX) ready for live presentation scan.
 - Reviewed Samvedna's Power Security Opportunity Discovery Assistant PoC and generated integration reports (`.docx` and `.md`).
+- **Demo flow simplified**: `setup.sh` now does ALL environment prep (certs, PowerSC keystore, endpoint bootstrap, initial scan). The Challenge page shows BEFORE results on load — no buttons to click. The only UI actions are "Deploy Vault Certificates" and "Run AFTER Scan".
 
 ---
 
@@ -25,6 +26,7 @@
 | Aug 2026 | Recipe structure started. RECIPE.md frontmatter + COLLECTION.md written. Skills and mode created. TechZone environment noted as v1 (manual reservation required). |
 | Sep 2026 | Full recipe brief written: `01-PowerSC-Vault-IBM-Power.md` aligned to official template — all sections complete (exec narrative, 3-prompt chain, demo script, sample inputs, what good looks like, known issues, executive takeaway). RECIPE.md Quick Start updated to reference the brief and the 3-prompt flow. |
 | 2026-09-09 | **Live Reservation End-to-End Verification**: Tested on TechZone reservation `pvm01/02/03-731cq22k` (RHEL 9.8 + AIX 7.3). Installed Podman, launched Vault container (`icr.io/ppc64le-oss/vault-ppc64le:v1.14.8`), verified PKI setup, fixed AIX JSON parsing in `replace-with-vault-certificates.sh`, verified 150 cert replacement with 24h Vault certs, reset back to BEFORE state. |
+| 2026-09-09 | **Demo flow refactored**: Moved cert deploy + PowerSC keystore + endpoint bootstrap + initial scan from UI button into `setup.sh` (steps 14–16). `setup.sh` now requires `--powersc-pass`. Challenge page now shows BEFORE scan results on load (no setup button). `setup.js` route and `/api/setup` removed from Express backend. `generate-old-certificates.sh` now accepts `SCAN_FOLDER` env var. |
 
 ---
 
@@ -61,11 +63,12 @@
 
 ## Next steps
 
-1. **Record Level 3 Stand and Deliver** — use the demo script and Carbon UI (`http://pvm02-731cq22k.p642.pok-systems.techzone.ibm.com:3001`) + PowerSC GUI.
-2. **Open PR to CE Marketplace** — target: `ClientEngineering/bob` → `Recipes/PowerSC-Vault-IBM-Power/`
+1. **Test the refactored setup.sh** on the live TechZone reservation — run steps 14–16 and confirm Challenge page shows live scan results on load.
+2. **Record Level 3 Stand and Deliver** — use the demo script and Carbon UI (`http://pvm02-731cq22k.p642.pok-systems.techzone.ibm.com:3001`) + PowerSC GUI.
+3. **Open PR to CE Marketplace** — target: `ClientEngineering/bob` → `Recipes/PowerSC-Vault-IBM-Power/`
    - `01-PowerSC-Vault-IBM-Power.md`
    - `README.md`
-3. **Collaborate with Samvedna** — share `Power-Security-Discovery-Review-Report.docx` and propose linking the Discovery Assistant directly to this live TechZone demo.
+4. **Collaborate with Samvedna** — share `Power-Security-Discovery-Review-Report.docx` and propose linking the Discovery Assistant directly to this live TechZone demo.
 
 ---
 
@@ -77,7 +80,7 @@ Paste this into the first message:
 We are working on the PowerSC + Vault IBM Power recipe for the CE Marketplace.
 Read _checkpoint.md for full context.
 
-Current status: recipe brief (01-PowerSC-Vault-IBM-Power.md) aligned to official template, Next.js Carbon UI running live on pvm02 (:3001), Vault + AIX scripts validated end-to-end on TechZone.
+Current status: recipe brief aligned, Carbon UI live on pvm02 (:3001), setup.sh now handles full environment prep (certs + PowerSC bootstrap + initial scan, steps 14–16). Challenge page shows BEFORE scan results on load — no setup button. UI actions are now: Deploy Vault Certificates → Run AFTER Scan only.
 
-[Describe what you are doing next — e.g. recording the Stand and Deliver, preparing the CE Marketplace PR submission, or collaborating with Samvedna.]
+[Describe what you are doing next — e.g. testing the new setup.sh steps on the live reservation, recording the Stand and Deliver, or preparing the CE Marketplace PR submission.]
 ```
