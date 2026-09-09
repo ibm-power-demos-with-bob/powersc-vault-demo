@@ -10,9 +10,10 @@
 - Podman installed and Vault container deployed on RHEL (pvm02 / ppc64le).
 - Vault PKI configured with Root CA and `sap-oracle` role.
 - 150 synthetic weak certificates generated on AIX (pvm03) and replaced with 24h Vault certs with full validation.
-- Demo Carbon UI & Express Backend deployed and running on RHEL (pvm02) on port 3001 (`/challenge`, `/solution`, `/results`, `/customer`).
+- Demo Carbon UI & Express Backend deployed and running live on RHEL (pvm02) on port 3001 (`/challenge`, `/solution`, `/results`, `/customer`).
 - Script fixes applied: AIX 7.3 Python3 JSON extraction handles literal newlines without crashing.
 - Environment reset to "BEFORE" state (150 weak certs on AIX) ready for live presentation scan.
+- Reviewed Samvedna's Power Security Opportunity Discovery Assistant PoC and generated integration reports (`.docx` and `.md`).
 
 ---
 
@@ -60,11 +61,11 @@
 
 ## Next steps
 
-1. **Run PROMPT #3 end-to-end from a clean TechZone reservation** — validate the 3-prompt chain works as written; log any new failures to Known Issues in `01-PowerSC-Vault-IBM-Power.md`
-2. **Record Level 3 Stand and Deliver** — use the demo script in `01-PowerSC-Vault-IBM-Power.md` § DEMO SCRIPT
-3. **Open PR to CE Marketplace** — target: `ClientEngineering/bob` → `Recipes/PowerSC-Vault-IBM-Power/`
+1. **Record Level 3 Stand and Deliver** — use the demo script and Carbon UI (`http://pvm02-731cq22k.p642.pok-systems.techzone.ibm.com:3001`) + PowerSC GUI.
+2. **Open PR to CE Marketplace** — target: `ClientEngineering/bob` → `Recipes/PowerSC-Vault-IBM-Power/`
    - `01-PowerSC-Vault-IBM-Power.md`
-   - `README.md` (one-paragraph blurb)
+   - `README.md`
+3. **Collaborate with Samvedna** — share `Power-Security-Discovery-Review-Report.docx` and propose linking the Discovery Assistant directly to this live TechZone demo.
 
 ---
 
@@ -76,9 +77,7 @@ Paste this into the first message:
 We are working on the PowerSC + Vault IBM Power recipe for the CE Marketplace.
 Read _checkpoint.md for full context.
 
-Current status: recipe brief (01-PowerSC-Vault-IBM-Power.md) written and aligned to the
-official template. Next step is running PROMPT #3 end-to-end from a clean TechZone
-reservation to validate the deploy flow and log any new Known Issues.
+Current status: recipe brief (01-PowerSC-Vault-IBM-Power.md) aligned to official template, Next.js Carbon UI running live on pvm02 (:3001), Vault + AIX scripts validated end-to-end on TechZone.
 
-[Describe what you are doing next — e.g. TechZone reservation ready, or recording the Stand and Deliver, or opening the PR.]
+[Describe what you are doing next — e.g. recording the Stand and Deliver, preparing the CE Marketplace PR submission, or collaborating with Samvedna.]
 ```
