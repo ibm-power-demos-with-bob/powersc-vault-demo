@@ -10,6 +10,7 @@
 - Podman installed and Vault container deployed on RHEL (pvm02 / ppc64le).
 - Vault PKI configured with Root CA and `sap-oracle` role.
 - 150 synthetic weak certificates generated on AIX (pvm03) and replaced with 24h Vault certs with full validation.
+- Demo Carbon UI & Express Backend deployed and running on RHEL (pvm02) on port 3001 (`/challenge`, `/solution`, `/results`, `/customer`).
 - Script fixes applied: AIX 7.3 Python3 JSON extraction handles literal newlines without crashing.
 - Environment reset to "BEFORE" state (150 weak certs on AIX) ready for live presentation scan.
 
@@ -48,6 +49,7 @@
 | Environment type | v1 — manual reservation required |
 | TechZone collection | https://techzone.ibm.com/collection/powersc-hands-on/environments |
 | Active reservation | `pvm01/02/03-731cq22k` (IPs: .146, .156, .151) |
+| Demo Web UI (pvm02) | `http://pvm02-731cq22k.p642.pok-systems.techzone.ibm.com:3001` |
 | PowerSC Server (pvm01) | `https://pvm01-731cq22k.p642.pok-systems.techzone.ibm.com` |
 | Vault Host (pvm02) | `pvm02-731cq22k.p642.pok-systems.techzone.ibm.com` (129.40.125.156) |
 | AIX Client (pvm03) | `pvm03-731cq22k.p642.pok-systems.techzone.ibm.com` (129.40.125.151) |
