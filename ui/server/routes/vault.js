@@ -108,7 +108,7 @@ router.post('/replace-certificates', async (req, res) => {
       privateKeyPath: sshKeyPath,
       localScript: scriptSrc,
       remoteScript: remotePath,
-      sudo: true,
+      sudo: false,
       env: {
         VAULT_ADDR: vaultAddrForAix,
         VAULT_TOKEN: VAULT_TOKEN,
@@ -122,7 +122,7 @@ router.post('/replace-certificates', async (req, res) => {
     });
 
     req.io.emit('vault:status', { step: 3, message: 'Complete' });
-    res.json({ success: true, certificatesReplaced: 150 });
+    res.json({ success: true, certificatesReplaced: 151 });
   } catch (err) {
     console.error('[vault] replace-certificates error:', err.message);
     req.io.emit('vault:error', { message: err.message });

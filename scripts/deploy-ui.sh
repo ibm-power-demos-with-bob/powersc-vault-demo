@@ -225,46 +225,21 @@ echo -e "${GREEN}  ✓ Created start-ui.sh${NC}"
 
 echo ""
 
-# Step 7: Summary
-echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}UI Deployment Complete!${NC}"
-echo -e "${GREEN}========================================${NC}"
-echo ""
-echo -e "${YELLOW}Deployment Summary:${NC}"
-echo ""
-echo -e "${BLUE}UI Location:${NC}"
-echo "  Frontend: $UI_DIR"
-echo "  Backend: $BACKEND_DIR"
-echo "  Logs: $DEMO_HOME/logs/"
-echo ""
-echo -e "${BLUE}Installed Packages:${NC}"
-echo "  ✓ Carbon Design System (@carbon/react 1.33.0)"
-echo "  ✓ Carbon Icons & Pictograms"
-echo "  ✓ Next.js 13.4.9"
-echo "  ✓ React 18.2.0"
-echo "  ✓ Socket.IO (real-time updates)"
-echo "  ✓ Express (backend API)"
-echo ""
-echo -e "${YELLOW}Next Steps:${NC}"
-echo ""
-echo "1. Start the UI in development mode (recommended for testing):"
-echo "   cd $UI_DIR"
-echo "   yarn dev"
-echo "   # Frontend: http://localhost:3001"
-echo ""
-echo "2. Or start in production mode:"
-echo "   $DEMO_HOME/start-ui.sh"
-echo ""
-echo "3. Access the demo UI:"
-echo "   http://$(hostname -I | awk '{print $1}'):3001"
-echo ""
-echo "4. Configure environment variables if needed:"
-echo "   vi $DEMO_HOME/.env"
-echo ""
-echo -e "${BLUE}Troubleshooting:${NC}"
-echo "  - Check logs: tail -f $DEMO_HOME/logs/backend.log"
-echo "  - Verify ports: netstat -tuln | grep -E '3001|3002'"
-echo "  - Test backend: curl http://localhost:3002/api/health"
-echo ""
+# Step 7: Start UI persistently (setsid + nohup — survives SSH disconnect)
+echo -e "${BLUE}Step 7: Starting UI (persistent, survives SSH disconnect)...${NC}"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$SCRIPT_DIR/start-ui.sh" ]; then
+    bash "$SCRIPT_DIR/start-ui.sh"
+else
+    echo -e "${YELLOW}  ⚠ start-ui.sh not found — falling back to inline start${NC}"
+    mkdir -p "$DEMO_HOME/logs"
+    cd "$UI_DIR/server"
+    setsid nohup node index.js > "$DEMO_HOME/logs/backend.log" 2>&1 &
+    echo "  Backend PID: $!"
+    cd "$UI_DIR"
+    setsid nohup yarn start > "$DEMO_HOME/logs/frontend.log" 2>&1 &
+    echo "  Frontend PID: $!"
+fi
 
 # Made with Bob

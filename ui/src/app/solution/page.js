@@ -220,8 +220,8 @@ export default function SolutionPage() {
           <div className={styles.archArrow}>→</div>
           <div className={styles.archNode}>
             <strong>AIX Certificates</strong>
-            <span>/opt/sap, /opt/oracle</span>
-            <span>/opt/integration, /opt/proxy</span>
+            <span>~/demo-certs/sap</span>
+            <span>~/demo-certs/oracle, /integration</span>
           </div>
         </div>
         <p className={styles.archNote}>

@@ -182,7 +182,7 @@ export default function ChallengePage() {
                     </div>
                   </div>
                   <p style={{ fontSize: '0.6875rem', color: 'var(--cds-text-placeholder)', marginTop: '0.75rem' }}>
-                    Scan time: {liveMetrics.scanTime ? new Date(liveMetrics.scanTime).toLocaleTimeString() : '—'}
+                    Scan time: {liveMetrics.scanTime ? new Date(liveMetrics.scanTime).toLocaleString() : '—'}
                   </p>
                 </div>
               ) : (
