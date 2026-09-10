@@ -130,4 +130,75 @@ router.post('/replace-certificates', async (req, res) => {
   }
 });
 
+// POST /api/vault/reset-certificates
+// SSH to AIX and re-run generate-old-certificates.sh to restore the BEFORE state.
+// Also triggers a PowerSC rescan so the Challenge page reflects the reset immediately.
+router.post('/reset-certificates', async (req, res) => {
+  const aixHost    = process.env.AIX_HOST;
+  const aixUser    = process.env.AIX_USER || 'cecuser';
+  const sshKeyPath = process.env.AIX_SSH_KEY_PATH;
+
+  if (!aixHost) {
+    return res.status(500).json({ error: 'AIX_HOST not configured. Check .env.local.' });
+  }
+
+  try {
+    req.io.emit('reset:status', { message: 'Connecting to AIX…' });
+
+    const scriptSrc  = path.resolve(__dirname, '../../../scripts/generate-old-certificates.sh');
+    const remotePath = `/home/${aixUser}/generate-old-certificates.sh`;
+    const scanFolder = `/home/${aixUser}/demo-certs`;
+
+    req.io.emit('reset:status', { message: 'Deploying 150 weak certificates to AIX…' });
+
+    await runScriptOnAIX({
+      host: aixHost,
+      username: aixUser,
+      privateKeyPath: sshKeyPath,
+      localScript: scriptSrc,
+      remoteScript: remotePath,
+      sudo: false,
+      env: { SCAN_FOLDER: scanFolder },
+      onOutput: (line) => {
+        if (line.includes('Generating') || line.includes('cert') || line.includes('Complete')) {
+          req.io.emit('reset:progress', { line: line.trim() });
+        }
+      },
+    });
+
+    req.io.emit('reset:status', { message: 'Weak certificates deployed — triggering PowerSC scan…' });
+
+    // Trigger a PowerSC rescan so the Challenge page reflects the BEFORE state immediately
+    const POWERSC_URL  = process.env.POWERSC_URL;
+    const POWERSC_USER = process.env.POWERSC_USER || 'powersc-admin';
+    const POWERSC_PASS = process.env.POWERSC_PASS || '';
+    const AIX_ENDPOINT = process.env.AIX_HOST;
+
+    if (POWERSC_URL && POWERSC_PASS) {
+      const https = require('https');
+      const axios = require('axios');
+      const scanClient = axios.create({
+        baseURL: `${POWERSC_URL}/ws/powerscui`,
+        auth: { username: POWERSC_USER, password: POWERSC_PASS },
+        httpsAgent: new https.Agent({ rejectUnauthorized: false }),
+        timeout: 15000,
+      });
+      try {
+        await scanClient.post('/command', {
+          orders: [{ commandName: 'runQuantumSafeScan', elementId: AIX_ENDPOINT }],
+        });
+      } catch (_) {
+        // Scan trigger failure is non-fatal — certs are already reset
+      }
+    }
+
+    req.io.emit('reset:status', { message: 'Complete' });
+    res.json({ success: true, message: '150 weak certificates deployed. BEFORE state restored.' });
+  } catch (err) {
+    console.error('[vault] reset-certificates error:', err.message);
+    req.io.emit('reset:error', { message: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

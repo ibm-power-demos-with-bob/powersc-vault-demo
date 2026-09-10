@@ -10,7 +10,7 @@ import {
   InlineNotification,
   Button,
 } from '@carbon/react';
-import { Launch, ArrowRight, User } from '@carbon/icons-react';
+import { Launch, ArrowRight, User, Reset } from '@carbon/icons-react';
 import styles from './challenge-page.module.scss';
 import { apiBase } from '../../lib/api';
 
@@ -24,9 +24,38 @@ const METRICS_DEFAULT = [
 
 export default function ChallengePage() {
   // 'loading' | 'ready' | 'error'
-  const [scanStatus, setScanStatus] = useState('loading');
+  const [scanStatus, setScanStatus]   = useState('loading');
   const [liveMetrics, setLiveMetrics] = useState(null);
   const [errorMsg, setErrorMsg]       = useState('');
+  // 'idle' | 'running' | 'done' | 'error'
+  const [resetStatus, setResetStatus] = useState('idle');
+  const [resetMsg, setResetMsg]       = useState('');
+
+  async function handleReset() {
+    setResetStatus('running');
+    setResetMsg('Restoring 150 weak certificates on AIX…');
+    try {
+      const res  = await fetch(`${apiBase()}/api/vault/reset-certificates`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Reset failed');
+      setResetStatus('done');
+      setResetMsg('BEFORE state restored. Refreshing scan results…');
+      // Reload the scan summary after a short delay to let PowerSC scan complete
+      setTimeout(() => {
+        setScanStatus('loading');
+        setLiveMetrics(null);
+        setResetStatus('idle');
+        setResetMsg('');
+        fetch(`${apiBase()}/api/powersc/summary`)
+          .then(r => r.json())
+          .then(d => { if (d.complianceScore !== undefined) setLiveMetrics(d); setScanStatus('ready'); })
+          .catch(() => setScanStatus('error'));
+      }, 8000);
+    } catch (err) {
+      setResetStatus('error');
+      setResetMsg(err.message);
+    }
+  }
 
   // Load the current BEFORE scan results on mount
   useEffect(() => {
@@ -212,6 +241,38 @@ export default function ChallengePage() {
             </>
           )}
         </Tile>
+
+        {/* Presenter-only reset panel — restores the BEFORE state for repeat demos */}
+        <div style={{
+          marginTop: '1rem',
+          padding: '0.75rem 1rem',
+          border: '1px dashed var(--cds-border-subtle-01)',
+          background: 'var(--cds-layer-01)',
+        }}>
+          <p style={{ fontSize: '0.75rem', color: 'var(--cds-text-secondary)', marginBottom: '0.5rem' }}>
+            <strong>Presenter:</strong> Run this to reset the demo to the BEFORE state (re-deploys 150 weak certs and triggers a PowerSC scan).
+          </p>
+          {resetStatus === 'idle' && (
+            <Button renderIcon={Reset} kind="ghost" size="sm" onClick={handleReset}>
+              Reset to BEFORE State
+            </Button>
+          )}
+          {resetStatus === 'running' && (
+            <InlineLoading description={resetMsg} status="active" />
+          )}
+          {resetStatus === 'done' && (
+            <InlineLoading description={resetMsg} status="finished" />
+          )}
+          {resetStatus === 'error' && (
+            <InlineNotification
+              kind="error"
+              title="Reset failed —"
+              subtitle={resetMsg}
+              hideCloseButton
+              style={{ marginTop: '0.5rem' }}
+            />
+          )}
+        </div>
       </Column>
 
     </Grid>
