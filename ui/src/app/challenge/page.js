@@ -39,18 +39,10 @@ export default function ChallengePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Reset failed');
       setResetStatus('done');
-      setResetMsg('BEFORE state restored. Refreshing scan results…');
-      // Reload the scan summary after a short delay to let PowerSC scan complete
-      setTimeout(() => {
-        setScanStatus('loading');
-        setLiveMetrics(null);
-        setResetStatus('idle');
-        setResetMsg('');
-        fetch(`${apiBase()}/api/powersc/summary`)
-          .then(r => r.json())
-          .then(d => { if (d.complianceScore !== undefined) setLiveMetrics(d); setScanStatus('ready'); })
-          .catch(() => setScanStatus('error'));
-      }, 8000);
+      setResetMsg('BEFORE state restored — reloading page…');
+      // Full page reload after a short delay — lets the PowerSC scan settle
+      // and ensures the Challenge page re-fetches a clean BEFORE summary on mount
+      setTimeout(() => window.location.reload(), 5000);
     } catch (err) {
       setResetStatus('error');
       setResetMsg(err.message);
