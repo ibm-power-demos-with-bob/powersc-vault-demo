@@ -75,7 +75,7 @@
 
 ### SESSION 3 HANDOFF (2026-11-09) - READ FIRST
 
-**State:** Demo is rebuilt and live on a Demo-purpose TechZone reservation (BEFORE state verified in UI). This folder is now a git clone of `origin/main` (`ibm-power-demos-with-bob/powersc-vault-demo`, PUBLIC repo) with the work COMMITTED locally (session 4) but NOT PUSHED. User wants this folder to become the new `main` (their code is the authority); do not force-push; commit on top of existing history; ask before pushing.
+**State:** Demo is rebuilt and live on a Demo-purpose TechZone reservation (BEFORE state verified in UI). This folder is now a git clone of `origin/main` (`ibm-power-demos-with-bob/powersc-vault-demo`, PUBLIC repo) with the work COMMITTED and PUSHED (session 4, commit 60af3c1, fast-forward, no force). User wants this folder to become the new `main` (their code is the authority); do not force-push; commit on top of existing history; ask before pushing.
 
 **What the staged change does:** removes every per-deployment value (OS user, hostnames, PowerSC password) from scripts/docs/skills; new `scripts/lib-env.sh` reads them from `ui/.env.local`; `setup.sh` fixed for fresh boxes (no Node installed, no hardcoded user, Vault re-run port clash); restores the 21 `.bob/` + `docs/` files that were missing locally; adds `.gitattributes` (LF for .sh); customer page is Danish NIS2 content (intentional per user).
 
@@ -85,8 +85,8 @@
 3. Secrets scan on staged content clean; `bash -n` passes on all 27 scripts (Git bash on Windows); no CRs in staged .sh files.
 
 **Then (remaining):**
-- Local commit made on top of origin/main (session 4). **NOT PUSHED - ask user before `git push`** (no force-push). Old commits on the public repo still contain EXPIRED TechZone passwords; history scrub is the user's call.
-- Verify the published script end-to-end: on pvm02 run `bash scripts/setup.sh` pulled from GitHub (needs the push first). Also test AFTER flow (Deploy Vault Certificates -> Run AFTER Scan) on the live reservation.
+- Pushed to origin/main as 60af3c1 (session 4, user approved, fast-forward). Old commits on the public repo still contain EXPIRED TechZone passwords; history scrub is the user's call.
+- Verify the published script end-to-end: on pvm02 run `bash scripts/setup.sh` pulled from GitHub (push is done, so this is unblocked). Also test AFTER flow (Deploy Vault Certificates -> Run AFTER Scan) on the live reservation.
 - CE Marketplace template (https://github.ibm.com/ClientEngineering/bob/tree/main/Recipes/templates) is behind SAML SSO - Bob could not read it. Ask user to paste/export the template files, then compare with RECIPE.md / 01-PowerSC-Vault-IBM-Power.md / COLLECTION.md.
 
 **Live environment (not stored here):** reservation ends 2026-11-13 12:45 UTC. Hosts/user/password are on the TechZone reservation page. Local `.env.local` and `.ssh/id_rsa_techzone` are gitignored. SSH to pvm02 works with the key. UI restart: `bash ~/powersc-vault-demo/scripts/start-ui.sh` on pvm02. The deployed copy on pvm02 was cloned from the OLD published repo plus a locally patched `setup.sh` - it does not have this staged work.
@@ -96,7 +96,7 @@
 ### Starting a new task - paste this
 
 ```
-Read _checkpoint.md "SESSION 3 HANDOFF" first. Repo is a git clone of origin/main with the cleaned-up work committed locally but NOT pushed. First: ask me whether to push (no force-push), then verify setup.sh from GitHub on pvm02 and test the AFTER flow.
+Read _checkpoint.md "SESSION 3 HANDOFF" first. Repo is a git clone of origin/main with the cleaned-up work pushed (60af3c1). First: verify setup.sh from GitHub on pvm02 and test the AFTER flow.
 ```
 
 
