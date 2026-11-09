@@ -81,7 +81,7 @@ powersc-vault-demo/
   - RHEL on IBM Power (Vault server)
   - AIX client (certificate host)
   - PowerSC server (scanning)
-- SSH access with password: `8-P5VO+NT3UR5!g`
+- SSH access with password: `<password from your TechZone reservation>`
 - Windows desktop with SCP/SSH client
 
 ### 1. Deploy Old Certificates (BEFORE State)

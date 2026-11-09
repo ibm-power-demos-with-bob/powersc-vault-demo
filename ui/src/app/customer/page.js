@@ -36,49 +36,46 @@ const JLR_TIMELINE = [
 
 // ─── Section B — Customer Context ────────────────────────────────────────────
 // This section IS CUSTOMISED per customer.
-// The Howdens Joinery worked example is pre-loaded here.
+// Tailored for Danish Critical Infrastructure & Transport.
 // When the seller re-bakes this demo, they replace the CUSTOMER_CONTEXT object
 // and the PERSONAS array using the IBM Consulting Advantage story-builder skill.
 
 const CUSTOMER_CONTEXT = {
-  name: 'Howdens Joinery',
-  tagline: '"Built for the Trade"',
-  industry: 'Trade Distribution — UK kitchen and joinery supplier',
-  source: 'IBM Consulting Advantage analysis of Howdens 2025 Annual Report',
+  name: 'Critical Infrastructure & Enterprise Services',
+  tagline: '"Operational Continuity & NIS2 Resilience"',
+  industry: 'Transport, Public Sector, Utilities & Industrial Services (Denmark)',
+  source: 'Danish Cyber Threat Assessment 2026 & NIS2 Resilience Framework',
   riskStatement:
-    'Explicit board-level mandate: "low appetite for cyber security risk." ' +
-    'Hundreds of depot locations depend on continuous SAP availability to serve ' +
-    'trade customers. A certificate-related outage preventing depot access to SAP ' +
-    'is directly equivalent to closing depots.',
+    'Denmark Centre for Cyber Security assessment: Cyber Espionage (Very High), Cyber Crime (Very High), Cyber Activism (High). ' +
+    'Recent waves of cyber incidents affecting ~40 Danish entities (including public transport ticketing, central government portals, courts, and industrial manufacturing) ' +
+    'highlight that modern disruption directly impacts operational services citizens and businesses rely on. ' +
+    'Under NIS2 and the National Cyber Strategy 2026–2029, the mandate is clear: prove resilience, eliminate unmanaged identity and cryptographic vulnerabilities, and maintain uninterrupted service delivery.',
   keyFacts: [
-    "UK\u2019s leading trade-only kitchen supplier \u2014 900+ depots",
-    'Six IBM Power E980 servers running SAP in production landscape',
-    '100+ key suppliers exchanging verified data through certificate-protected channels',
-    'Distributed depot network — each depot depends on certificate-based SAP connectivity',
-    'Audit Committee oversees cyber security governance at board level',
-    'Brand promise: trade customers depend on Howdens systems 24/7',
+    'Critical Public & Commercial Services: Transport ticketing (e.g. Rejsekort), government portals, regional services, and manufacturing',
+    'Infrastructure Reality: Mission-critical core workloads running on robust enterprise platforms (IBM Power, Linux, AIX)',
+    'The Operational Risk: Long-lived credentials and manual certificate tracking create blind spots and risk of unplanned service disruption',
+    'Regulatory Driver (NIS2): Heightened expectations for supply chain security, automated posture verification, and rapid incident recovery',
+    'Resilience Goal: Transition from reactive manual renewals to automated zero-touch PKI lifecycle management and continuous compliance visibility',
   ],
-  parallelToJLR:
-    'Distributed operational network connected to central SAP systems — ' +
-    'the same IT/OT convergence pattern that made JLR vulnerable. ' +
-    'A certificate-based lateral movement attack could sever depot access to SAP, ' +
-    'preventing trade orders and triggering supply chain disruption across 100+ suppliers.',
+  systemicRiskNote:
+    'Modern enterprise environments connect hundreds of distributed operational endpoints back to core transactional systems. ' +
+    'When identity, cryptographic keys, or certificates are managed manually across distributed systems, they create fertile ground for lateral movement and single points of operational failure.',
 };
 
 const PERSONAS = [
   {
-    name: 'Richard Sutcliffe',
-    title: 'Supply Chain & IT Director (Executive Committee)',
-    concern: 'Business continuity for the depot network. Any outage that prevents trade customers from placing orders is unacceptable.',
-    question: '"Can you guarantee our depot network stays operational if a certificate issue occurs?"',
-    hook: 'Show the AFTER state — zero manual steps, continuous monitoring, automated rotation. Depots never miss a certificate renewal.',
+    name: 'Infrastructure & Operations Leadership',
+    title: 'Enterprise Architecture, Platform Engineering & IT Operations',
+    focus: 'Operational continuity and eliminating unplanned service outages caused by expired credentials.',
+    perspective: 'How do we automate certificate lifecycles across core platforms to ensure 100% operational uptime without manual overhead?',
+    value: 'HashiCorp Vault provides zero-touch automated issuance and rotation, removing manual spreadsheets and eliminating expiry risk.',
   },
   {
-    name: 'Jackie Callaway',
-    title: 'CFO + Audit Committee',
-    concern: 'Governance, measurable risk reduction, and board-level reporting. Needs numbers she can put in front of the Audit Committee.',
-    question: '"How do we demonstrate to the Audit Committee that our certificate risk is under control?"',
-    hook: 'The PowerSC compliance report is the Audit Committee artefact. ~67% → ~98% compliance, with a continuous monitoring trail.',
+    name: 'Security, Risk & Compliance Leadership',
+    title: 'CISO Office, Cyber Defence & Regulatory Compliance (NIS2)',
+    focus: 'Eliminating weak cryptography, preventing lateral movement, and maintaining continuous audit readiness.',
+    perspective: 'How do we continuously verify our cryptographic posture and prove resilience across legacy and modern workloads to regulators?',
+    value: 'IBM PowerSC provides automated posture scanning and quantum-safety scoring to verify compliance in real time.',
   },
 ];
 
@@ -88,20 +85,68 @@ export default function CustomerPage() {
 
       {/* Page title */}
       <Column lg={16} md={8} sm={4} className={styles.pageTitle}>
-        <h1 className={styles.heading}>Before You Demo</h1>
+        <h1 className={styles.heading}>Customer Context & Operational Resilience</h1>
         <p className={styles.subheading}>
-          Two things that make every demo land: the industry proof-point that creates urgency,
-          and the customer context that makes it personal. Keep both in front of you
-          while you present.
+          Aligning infrastructure security and PKI automation with Danish critical infrastructure priorities,
+          NIS2 regulatory expectations, and enterprise risk management.
         </p>
       </Column>
 
-      {/* ── SECTION A — Industry Risk (static) ──────────────────────────── */}
+      {/* ── SECTION 1 — Danish Landscape & Audience Alignment (Top) ──────── */}
       <Column lg={16} md={8} sm={4} className={styles.sectionDivider}>
         <div className={styles.sectionLabel}>
-          <Tag type="red">Section A — Industry Risk</Tag>
+          <Tag type="blue">Section 1 — Critical Infrastructure Context & Stakeholders</Tag>
           <p className={styles.sectionNote}>
-            Static across all customers. Use this to open every conversation.
+            Danish threat landscape, NIS2 regulatory drivers, and key operational stakeholders.
+          </p>
+        </div>
+      </Column>
+
+      {/* Customer overview */}
+      <Column lg={8} md={8} sm={4} className={styles.customerCard}>
+        <Tile className={styles.customerTile}>
+          <div className={styles.customerHeader}>
+            <Enterprise size={20} />
+            <span className={styles.customerName}>{CUSTOMER_CONTEXT.name}</span>
+            <Tag type="outline" size="sm">{CUSTOMER_CONTEXT.tagline}</Tag>
+          </div>
+          <p className={styles.customerIndustry}>{CUSTOMER_CONTEXT.industry}</p>
+          <p className={styles.customerSource}>Source: {CUSTOMER_CONTEXT.source}</p>
+          <h4 className={styles.riskHeading}>Threat Landscape & Context</h4>
+          <p className={styles.riskBody}>{CUSTOMER_CONTEXT.riskStatement}</p>
+          <h4 className={styles.factsHeading}>Key Industry Drivers</h4>
+          <ul className={styles.factsList}>
+            {CUSTOMER_CONTEXT.keyFacts.map((f, i) => (
+              <li key={i}>{f}</li>
+            ))}
+          </ul>
+        </Tile>
+      </Column>
+
+      {/* Stakeholders in the Room */}
+      <Column lg={8} md={8} sm={4} className={styles.customerCard}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', height: '100%' }}>
+          {PERSONAS.map((p, i) => (
+            <Tile key={i} className={styles.personaTile} style={{ height: 'auto', flex: 1 }}>
+              <div className={styles.personaHeader}>
+                <User size={16} />
+                <strong className={styles.personaName}>{p.name}</strong>
+              </div>
+              <p className={styles.personaTitle}>{p.title}</p>
+              <p className={styles.personaConcern}><em>Core Focus:</em> {p.focus}</p>
+              <p className={styles.personaQuestion}>&ldquo;{p.perspective}&rdquo;</p>
+              <p className={styles.personaHook}><strong>Solution Delivery:</strong> {p.value}</p>
+            </Tile>
+          ))}
+        </div>
+      </Column>
+
+      {/* ── SECTION 2 — Systemic PKI Risk & Industry Case Study ─────────── */}
+      <Column lg={16} md={8} sm={4} className={styles.sectionDivider} style={{ marginTop: '1.5rem' }}>
+        <div className={styles.sectionLabel}>
+          <Tag type="red">Section 2 — The Systemic Risk: Why Manual PKI Fails</Tag>
+          <p className={styles.sectionNote}>
+            How unmanaged certificates and weak cryptography create lateral movement attack paths.
           </p>
         </div>
       </Column>
@@ -110,16 +155,14 @@ export default function CustomerPage() {
         <Warning size={20} className={styles.warningIcon} />
         <div>
           <p className={styles.jlrHeadline}>
-            August 2025 — Jaguar Land Rover: £1.9 billion in total UK economic damage — the costliest cyber attack in UK history
+            Case Study: Jaguar Land Rover — £1.9B systemic loss from exploited PKI and lateral movement
           </p>
           <p className={styles.jlrBody}>
-            The Scattered Lapsus Hunters exploited JLR&apos;s PKI infrastructure — generating rogue
-            internal certificates that allowed lateral movement from corporate IT into operational
-            technology systems. The result: a five-week production shutdown across flagship UK plants.
-            More than half of the £1.9bn was borne by JLR itself; the remainder fell on 5,000+
-            businesses in the supply chain and the local economy. Classified as a Category 3 systemic
-            event by the Cyber Monitoring Centre.{' '}
-            <strong>The attack vector was certificate-based. The root cause was manual PKI management.</strong>
+            In August 2025, attackers exploited JLR&apos;s internal certificate infrastructure — generating rogue
+            certificates that enabled lateral movement across corporate IT and operational networks. The incident
+            resulted in a five-week production shutdown across multiple facilities and severely impacted over 5,000
+            supply chain businesses. Classified as a Category 3 systemic event by the Cyber Monitoring Centre.{' '}
+            <strong>The root cause was manual PKI governance and unmanaged internal trust.</strong>
           </p>
         </div>
       </Column>
@@ -142,7 +185,7 @@ export default function CustomerPage() {
       {/* JLR timeline */}
       <Column lg={10} md={8} sm={4} className={styles.timelineSection}>
         <Accordion>
-          <AccordionItem title="How the JLR attack unfolded — timeline">
+          <AccordionItem title="Incident Analysis: PKI exploit and lateral escalation timeline">
             <StructuredListWrapper>
               <StructuredListBody>
                 {JLR_TIMELINE.map((row, i) => (
@@ -158,87 +201,12 @@ export default function CustomerPage() {
       </Column>
 
       <Column lg={6} md={8} sm={4} className={styles.talkingPointBox}>
-        <h4 className={styles.tpHeading}>Opening talking point</h4>
+        <h4 className={styles.tpHeading}>Key Takeaway for Critical Operations</h4>
         <p className={styles.tpBody}>
-          &ldquo;In August 2025, attackers used rogue certificates to move laterally across
-          JLR&apos;s infrastructure and shut down production for five weeks. The total UK economic
-          damage was £1.9 billion — the costliest cyber attack in UK history according to the
-          Cyber Monitoring Centre. JLR bore over half; 5,000 businesses in their supply chain
-          bore the rest. The attack vector was PKI — specifically, old, manually-managed
-          certificate infrastructure. That risk profile is not unique to automotive.&rdquo;
+          Unmanaged, long-lived certificates are more than an administrative nuisance — they are a high-value attack
+          surface. When organisations lack automated lifecycle control, compromised or unrotated certificates can be used
+          to establish persistent, undetected lateral access across core services.
         </p>
-        <p className={styles.tpTransition}>
-          → <em>Then pivot to your customer&apos;s specific parallel (Section B below).</em>
-        </p>
-      </Column>
-
-      {/* ── SECTION B — Customer Context (customisable) ──────────────────── */}
-      <Column lg={16} md={8} sm={4} className={styles.sectionDivider}>
-        <div className={styles.sectionLabel}>
-          <Tag type="blue">Section B — Your Customer</Tag>
-          <p className={styles.sectionNote}>
-            Customise this section per engagement using the IBM Consulting Advantage
-            story-builder. The Howdens worked example is pre-loaded below.
-          </p>
-        </div>
-      </Column>
-
-      {/* Customer overview */}
-      <Column lg={8} md={8} sm={4} className={styles.customerCard}>
-        <Tile className={styles.customerTile}>
-          <div className={styles.customerHeader}>
-            <Enterprise size={20} />
-            <span className={styles.customerName}>{CUSTOMER_CONTEXT.name}</span>
-            <Tag type="outline" size="sm">{CUSTOMER_CONTEXT.tagline}</Tag>
-          </div>
-          <p className={styles.customerIndustry}>{CUSTOMER_CONTEXT.industry}</p>
-          <p className={styles.customerSource}>Source: {CUSTOMER_CONTEXT.source}</p>
-          <h4 className={styles.riskHeading}>Risk statement</h4>
-          <p className={styles.riskBody}>{CUSTOMER_CONTEXT.riskStatement}</p>
-          <h4 className={styles.factsHeading}>Key facts from IBM Consulting Advantage research</h4>
-          <ul className={styles.factsList}>
-            {CUSTOMER_CONTEXT.keyFacts.map((f, i) => (
-              <li key={i}>{f}</li>
-            ))}
-          </ul>
-        </Tile>
-      </Column>
-
-      {/* JLR parallel */}
-      <Column lg={8} md={8} sm={4} className={styles.parallelCard}>
-        <Tile className={styles.parallelTile}>
-          <h4 className={styles.parallelHeading}>The JLR parallel for this customer</h4>
-          <p className={styles.parallelBody}>{CUSTOMER_CONTEXT.parallelToJLR}</p>
-          <h4 className={styles.parallelHeading} style={{ marginTop: '1.5rem' }}>
-            Pivot line
-          </h4>
-          <p className={styles.tpBody}>
-            &ldquo;Howdens has a similar profile — distributed depot network, SAP at the centre,
-            100+ suppliers. The difference is, today we can show you what the proactive
-            version of this story looks like.&rdquo;
-          </p>
-        </Tile>
-      </Column>
-
-      {/* Personas */}
-      <Column lg={16} md={8} sm={4} className={styles.personasSection}>
-        <h3 className={styles.personasHeading}>Who is in the room</h3>
-        <Grid narrow>
-          {PERSONAS.map((p, i) => (
-            <Column key={i} lg={8} md={8} sm={4}>
-              <Tile className={styles.personaTile}>
-                <div className={styles.personaHeader}>
-                  <User size={16} />
-                  <strong className={styles.personaName}>{p.name}</strong>
-                </div>
-                <p className={styles.personaTitle}>{p.title}</p>
-                <p className={styles.personaConcern}><em>Their concern:</em> {p.concern}</p>
-                <p className={styles.personaQuestion}>{p.question}</p>
-                <p className={styles.personaHook}><strong>Your hook:</strong> {p.hook}</p>
-              </Tile>
-            </Column>
-          ))}
-        </Grid>
       </Column>
 
       {/* CTA */}

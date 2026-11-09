@@ -1,16 +1,14 @@
 #!/bin/bash
 # Fix quantumSafe.properties on pvm03 and trigger a fresh scan
-# Runs on pvm02 — SSHes to pvm03 with sudo (U5V9KZP has NOPASSWD:ALL)
+# Runs on pvm02 - SSHes to pvm03 with sudo (the TechZone OS user has NOPASSWD:ALL)
 
-source <(grep -E '^(POWERSC_URL|POWERSC_USER|POWERSC_PASS|AIX_HOST)' \
-  ~/powersc-vault-demo/ui/.env.local | tr -d '\r')
+source "$(dirname "${BASH_SOURCE[0]}")/lib-env.sh"   # per-deployment hosts/user/password from ui/.env.local
 
-SCAN_FOLDER="/home/U5V9KZP/demo-certs"
-API_BASE="${POWERSC_URL}/ws/powerscui"
+SSH_USER="$AIX_USER"
 PROPS="/etc/security/powersc/uiAgent/quantumSafe.properties"
 
 echo "=== Step 1: Write quantumSafe.properties on pvm03 ==="
-ssh -o StrictHostKeyChecking=no "U5V9KZP@${AIX_HOST}" \
+ssh -o StrictHostKeyChecking=no "${SSH_USER}@${AIX_HOST}" \
   "sudo mkdir -p /etc/security/powersc/uiAgent && \
    printf 'scanType=all\nscanFolders=${SCAN_FOLDER}\nportScan=false\nfileExtensions=.key,.pem,.pkcs8,.p8,.pk8,.pvk,.pub,.keystore,.jks,.p12,.pfx,.crt,.cer,.der,.p7b,.p7c,.spc,.crl,.cert,.arm,.ca-bundle,.kdb\n' \
    | sudo tee ${PROPS} && \
@@ -18,7 +16,7 @@ ssh -o StrictHostKeyChecking=no "U5V9KZP@${AIX_HOST}" \
 
 echo ""
 echo "=== Step 2: Restart pscuiagent on pvm03 ==="
-ssh -o StrictHostKeyChecking=no "U5V9KZP@${AIX_HOST}" \
+ssh -o StrictHostKeyChecking=no "${SSH_USER}@${AIX_HOST}" \
   "sudo stopsrc -s pscuiagent 2>/dev/null || true; sleep 3; sudo startsrc -s pscuiagent && echo agent-restarted"
 
 echo ""

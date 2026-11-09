@@ -85,7 +85,7 @@ Some terminal emulators work better than others:
 ## Quick Reference
 ```bash
 # Password for all systems
-8-P5VO+NT3UR5!g
+<password from your TechZone reservation>
 
 # RHEL IP
 <VAULT_HOST>

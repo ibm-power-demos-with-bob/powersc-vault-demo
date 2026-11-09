@@ -177,7 +177,7 @@ For services that must survive **reboots** (e.g. Vault), use systemd user servic
 ```bash
 podman generate systemd --new --name vault > ~/.config/systemd/user/vault.service
 systemctl --user enable vault.service
-loginctl enable-linger cecuser
+loginctl enable-linger "$(whoami)"
 ```
 
 ---

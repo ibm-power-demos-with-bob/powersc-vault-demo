@@ -31,7 +31,7 @@ POWERSC_HOST="p<NNNN>-pvm1.p<NNNN>.cecc.ihost.com"   # PowerSC server
 VAULT_HOST="p<NNNN>-pvm2.p<NNNN>.cecc.ihost.com"      # RHEL — Vault host
 AIX_HOST="p<NNNN>-pvm3.p<NNNN>.cecc.ihost.com"        # AIX — certificate target
 SSH_KEY="<path to downloaded .pem file>"
-SSH_USER="cecuser"
+SSH_USER="<os-user-from-TechZone-reservation>"  # changes on every deployment
 ```
 
 Node roles:
@@ -103,7 +103,7 @@ each one to `/etc/fapolicyd/fapolicyd.trust`, run `sudo fapolicyd-cli --update` 
 
 ## Step 3: Start Vault Container
 
-Vault runs as a **Power-native container** using rootless Podman as `cecuser`. The image
+Vault runs as a **Power-native container** using rootless Podman as the TechZone OS user (`$(whoami)`). The image
 `icr.io/ppc64le-oss/vault-ppc64le:v1.14.8` is maintained by IBM for ppc64le.
 
 There is no current native ppc64le Vault binary on HashiCorp's release pages. The
@@ -120,7 +120,7 @@ podman stop vault 2>/dev/null || true
 podman rm   vault 2>/dev/null || true
 
 # Start Vault in dev mode with explicit root token
-# Run as cecuser (NOT sudo) — rootless Podman
+# Run as the TechZone OS user (NOT sudo) — rootless Podman
 podman run -d \
   --name vault \
   -p 8200:8200 \
@@ -373,7 +373,7 @@ ssh -i "$SSH_KEY" "$SSH_USER@$VAULT_HOST" << 'ENDSSH'
 podman generate systemd --new --name vault > ~/.config/systemd/user/vault.service
 systemctl --user enable vault.service
 systemctl --user start vault.service
-loginctl enable-linger cecuser
+loginctl enable-linger "$(whoami)"
 ENDSSH
 ```
 
@@ -412,7 +412,7 @@ steps in this skill if starting from a fresh reservation.
 
 ```bash
 # 1. Copy the TechZone SSH key to pvm2
-scp -i "$SSH_KEY" "$SSH_KEY" "$SSH_USER@$VAULT_HOST:/home/cecuser/.ssh/techzone-key.pem"
+scp -i "$SSH_KEY" "$SSH_KEY" "$SSH_USER@$VAULT_HOST:~/.ssh/techzone-key.pem"
 
 # 2. SSH onto pvm2
 ssh -i "$SSH_KEY" "$SSH_USER@$VAULT_HOST"
@@ -425,7 +425,7 @@ bash ~/powersc-vault-demo/scripts/setup.sh \
   --vault-host  "$VAULT_HOST"    \
   --aix-host    "$AIX_HOST"      \
   --powersc-url "https://$POWERSC_HOST" \
-  --ssh-key     /home/cecuser/.ssh/techzone-key.pem
+  --ssh-key     ~/.ssh/techzone-key.pem
 ```
 
 The script prints a summary when complete:

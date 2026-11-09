@@ -1,8 +1,8 @@
 #!/bin/bash
 # Check what certs are actually in ~/demo-certs after the Vault replace run
-AIX_HOST="$(grep AIX_HOST ~/powersc-vault-demo/ui/.env.local | cut -d= -f2 | tr -d ' \r')"
+source "$(dirname "${BASH_SOURCE[0]}")/lib-env.sh"   # AIX_HOST / AIX_USER for this deployment
 
-ssh -o StrictHostKeyChecking=no "U5V9KZP@${AIX_HOST}" '
+ssh -o StrictHostKeyChecking=no "${AIX_USER}@${AIX_HOST}" '
 echo "--- sap/app01/certs/server.pem (should be Vault-issued) ---"
 openssl x509 -in ~/demo-certs/sap/app01/certs/server.pem -noout -issuer -dates 2>/dev/null
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 # Check the actual PowerSC scan folder config on pvm03
-AIX_HOST="$(grep AIX_HOST ~/powersc-vault-demo/ui/.env.local | cut -d= -f2 | tr -d ' \r')"
-ssh -o StrictHostKeyChecking=no "U5V9KZP@${AIX_HOST}" '
+source "$(dirname "${BASH_SOURCE[0]}")/lib-env.sh"   # AIX_HOST / AIX_USER for this deployment
+ssh -o StrictHostKeyChecking=no "${AIX_USER}@${AIX_HOST}" '
 echo "=== quantumSafe.properties ==="
 cat /etc/security/powersc/uiAgent/quantumSafe.properties 2>/dev/null || echo "file not found"
 

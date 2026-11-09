@@ -17,7 +17,7 @@ The Vault token being used doesn't have permission to issue certificates from th
 SSH to the RHEL Vault server:
 ```bash
 ssh cecuser@<VAULT_HOST>
-# Password: 8-P5VO+NT3UR5!g
+# Password: <password from your TechZone reservation>
 ```
 
 Check if Vault is initialized and unsealed:

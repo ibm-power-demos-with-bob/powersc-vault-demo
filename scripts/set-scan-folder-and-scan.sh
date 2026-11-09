@@ -1,11 +1,13 @@
 #!/bin/bash
-ENDPOINT="pvm03-731cq22k.p642.pok-systems.techzone.ibm.com"
-BASE="https://pvm01-731cq22k.p642.pok-systems.techzone.ibm.com/ws/powerscui"
-AUTH='powersc:(8FPU5dUC4a+P1d'
+# Per-deployment values (hosts, user, password) come from ui/.env.local via lib-env.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib-env.sh"
+ENDPOINT="$AIX_HOST"
+BASE="$API_BASE"
+AUTH="powersc:${POWERSC_PASS}"
 
 echo "=== Setting scan folder ==="
 curl -sk -u "$AUTH" -X POST -H "Content-Type: application/json" \
-  -d "{\"orders\":[{\"commandName\":\"setQuantumSafeScanFolders\",\"elementId\":\"$ENDPOINT\",\"scanFolders\":\"/home/U5V9KZP/demo-certs\"}]}" \
+  -d "{\"orders\":[{\"commandName\":\"setQuantumSafeScanFolders\",\"elementId\":\"$ENDPOINT\",\"scanFolders\":\"$SCAN_FOLDER\"}]}" \
   "$BASE/command"
 
 echo ""

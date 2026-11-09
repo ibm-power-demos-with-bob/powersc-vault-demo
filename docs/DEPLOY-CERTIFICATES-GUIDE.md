@@ -6,7 +6,7 @@ This guide walks through deploying the updated `generate-old-certificates.sh` sc
 ## Prerequisites
 - RHEL system (<VAULT_HOST>) - accessible
 - AIX system (<AIX_HOST>) - accessible  
-- Password: `8-P5VO+NT3UR5!g`
+- Password: `<password from your TechZone reservation>`
 - Updated `generate-old-certificates.sh` script
 
 ## Step 1: Transfer Script Directly to AIX
@@ -20,7 +20,7 @@ cd C:\Users\029878866\Desktop
 # Transfer directly to AIX (no need to go through RHEL)
 scp generate-old-certificates.sh cecuser@<AIX_HOST>:/home/cecuser/
 
-# Enter password when prompted: 8-P5VO+NT3UR5!g
+# Enter password when prompted: <password from your TechZone reservation>
 ```
 
 **Note**: You can transfer directly from Windows to AIX. The RHEL system (<VAULT_HOST>) is only needed for running Vault, not as an intermediary for file transfers.
@@ -32,7 +32,7 @@ SSH to AIX:
 ```bash
 # From RHEL (or directly from Windows)
 ssh cecuser@<AIX_HOST>
-# Password: 8-P5VO+NT3UR5!g
+# Password: <password from your TechZone reservation>
 
 # Verify the CA bundle exists
 ls -lh /opt/freeware/etc/ssl/certs/extracted/pem/tls-ca-bundle.pem

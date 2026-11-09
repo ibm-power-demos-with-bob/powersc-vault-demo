@@ -1,8 +1,10 @@
 #!/bin/bash
 # Discover PowerSC keystore / endpoint admin API paths
-BASE="https://pvm01-731cq22k.p642.pok-systems.techzone.ibm.com/ws/powerscui"
-AUTH="powersc:(8FPU5dUC4a+P1d"
-ENDPOINT="pvm03-731cq22k.p642.pok-systems.techzone.ibm.com"
+# Per-deployment values (hosts, password) come from ui/.env.local via lib-env.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib-env.sh"
+BASE="$API_BASE"
+AUTH="powersc:${POWERSC_PASS}"
+ENDPOINT="$AIX_HOST"
 
 echo "=== Keystore / endpoint admin paths ==="
 for path in \

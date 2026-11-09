@@ -93,7 +93,7 @@ and maintain the host's security posture for the PowerSC demo.
 
 ## Starting Vault
 
-Run as `cecuser` (rootless Podman — not sudo):
+Run as the TechZone OS user (rootless Podman — not sudo):
 
 ```bash
 # Clean up any previous container
@@ -152,7 +152,7 @@ mkdir -p ~/.config/systemd/user
 systemctl --user daemon-reload
 systemctl --user enable vault.service
 systemctl --user start vault.service
-loginctl enable-linger cecuser
+loginctl enable-linger "$(whoami)"
 ```
 
 **Note:** Even with auto-restart, dev mode Vault resets PKI configuration on restart. For

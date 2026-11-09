@@ -10,7 +10,7 @@
 #   - powersc-vault-demo-ui directory copied to RHEL client
 #
 # Usage: Run from demo home directory
-#        cd /home/cecuser/powersc-vault-demo
+#        cd ~/powersc-vault-demo
 #        ./deploy-ui.sh
 #
 # Author: Pre-Sales Demo Builder
@@ -32,7 +32,7 @@ echo -e "${GREEN}========================================${NC}"
 echo ""
 
 # Configuration
-DEMO_HOME="/home/cecuser/powersc-vault-demo"
+DEMO_HOME="${DEMO_HOME:-$HOME/powersc-vault-demo}"  # OS user differs per TechZone deployment
 UI_DIR="$DEMO_HOME/powersc-vault-demo-ui"
 BACKEND_DIR="$UI_DIR/backend"
 

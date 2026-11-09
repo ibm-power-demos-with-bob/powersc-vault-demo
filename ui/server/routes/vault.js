@@ -34,12 +34,12 @@ router.post('/setup-pki', async (req, res) => {
       await vaultClient.get('/v1/pki/cert/ca');
     } catch {
       await vaultClient.post('/v1/pki/root/generate/internal', {
-        common_name: 'Demo Internal Root CA',
+        common_name: 'Danish Critical Infrastructure Root CA',
         issuer_name: 'demo-root-ca',
         ttl: '8760h',
-        organization: 'Demo Organisation',
-        ou: 'IT Security',
-        country: 'GB',
+        organization: 'Danish Critical Infrastructure',
+        ou: 'Cyber Resilience & PKI',
+        country: 'DK',
       });
     }
 
@@ -54,15 +54,20 @@ router.post('/setup-pki', async (req, res) => {
     // Create / update the sap-oracle role
     await vaultClient.post('/v1/pki/roles/sap-oracle', {
       allowed_domains: [
+        'infrastructure.local',
+        'transport.dk.local',
+        'sap.infrastructure.local',
+        'oracle.infrastructure.local',
+        'mq.infrastructure.local',
+        'api.infrastructure.local',
+        'esb.infrastructure.local',
+        'b2b.infrastructure.local',
+        'lb.infrastructure.local',
+        'proxy.infrastructure.local',
         'howdens.local',
         'sap.howdens.local',
         'oracle.howdens.local',
         'mq.howdens.local',
-        'api.howdens.local',
-        'esb.howdens.local',
-        'b2b.howdens.local',
-        'lb.howdens.local',
-        'proxy.howdens.local',
       ],
       allow_subdomains: true,
       allow_bare_domains: true,
@@ -85,7 +90,7 @@ router.post('/setup-pki', async (req, res) => {
 // SSH to AIX and run replace-with-vault-certificates.sh
 router.post('/replace-certificates', async (req, res) => {
   const aixHost = process.env.AIX_HOST;
-  const aixUser = process.env.AIX_USER || 'cecuser';
+  const aixUser = process.env.AIX_USER || require('os').userInfo().username;
   const sshKeyPath = process.env.AIX_SSH_KEY_PATH;
 
   if (!aixHost) {
@@ -99,8 +104,9 @@ router.post('/replace-certificates', async (req, res) => {
     const remotePath = `/home/${aixUser}/replace-with-vault-certificates.sh`;
 
     // The replace script needs VAULT_ADDR pointing to this RHEL host (not 127.0.0.1)
-    // VAULT_ADDR for AIX = use pvm2 FQDN (derived from env or fallback to local)
-    const vaultAddrForAix = process.env.VAULT_ADDR_EXTERNAL || VAULT_ADDR;
+    // VAULT_ADDR for AIX = use pvm2 FQDN or IP
+    const vaultHost = process.env.VAULT_IP || process.env.VAULT_HOST || '127.0.0.1';
+    const vaultAddrForAix = process.env.VAULT_ADDR_EXTERNAL || `http://${vaultHost}:8200`;
 
     await runScriptOnAIX({
       host: aixHost,
@@ -135,7 +141,7 @@ router.post('/replace-certificates', async (req, res) => {
 // Also triggers a PowerSC rescan so the Challenge page reflects the reset immediately.
 router.post('/reset-certificates', async (req, res) => {
   const aixHost    = process.env.AIX_HOST;
-  const aixUser    = process.env.AIX_USER || 'cecuser';
+  const aixUser    = process.env.AIX_USER || require('os').userInfo().username;
   const sshKeyPath = process.env.AIX_SSH_KEY_PATH;
 
   if (!aixHost) {

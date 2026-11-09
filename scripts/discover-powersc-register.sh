@@ -1,9 +1,11 @@
 #!/bin/bash
 # Try to register pvm03 as a managed system in PowerSC
-BASE="https://pvm01-731cq22k.p642.pok-systems.techzone.ibm.com/ws/powerscui"
-AUTH="powersc:(8FPU5dUC4a+P1d"
-ENDPOINT="pvm03-731cq22k.p642.pok-systems.techzone.ibm.com"
-ENDPOINT_IP="129.40.125.151"
+# Per-deployment values (hosts, password) come from ui/.env.local via lib-env.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib-env.sh"
+BASE="$API_BASE"
+AUTH="powersc:${POWERSC_PASS}"
+ENDPOINT="$AIX_HOST"
+ENDPOINT_IP="${AIX_IP:-$(getent hosts "$AIX_HOST" | awk '{print $1}')}"
 
 echo "=== Try POST to /systems ==="
 curl -sk -u "$AUTH" -X POST -H "Content-Type: application/json" \
@@ -35,6 +37,6 @@ curl -sk -u "$AUTH" "$BASE/systems" | python3 -m json.tool 2>/dev/null
 echo ""
 echo "=== Check if there is a separate registration API base path ==="
 for path in "v1/systems" "api/systems" "powerscui/v1" "powerscui/v2" "rest/systems" "rest/v1/systems"; do
-  code=$(curl -sk -u "$AUTH" -o /dev/null -w "%{http_code}" "https://pvm01-731cq22k.p642.pok-systems.techzone.ibm.com/ws/$path")
+  code=$(curl -sk -u "$AUTH" -o /dev/null -w "%{http_code}" "${POWERSC_URL}/ws/$path")
   echo "$code  /ws/$path"
 done

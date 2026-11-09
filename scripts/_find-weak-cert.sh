@@ -1,8 +1,8 @@
 #!/bin/bash
 # Find the one remaining weak cert in ~/demo-certs
-AIX_HOST="$(grep AIX_HOST ~/powersc-vault-demo/ui/.env.local | cut -d= -f2 | tr -d ' \r')"
+source "$(dirname "${BASH_SOURCE[0]}")/lib-env.sh"   # AIX_HOST / AIX_USER for this deployment
 
-ssh -o StrictHostKeyChecking=no "U5V9KZP@${AIX_HOST}" '
+ssh -o StrictHostKeyChecking=no "${AIX_USER}@${AIX_HOST}" '
 echo "=== Total pem files in ~/demo-certs ==="
 find ~/demo-certs -name "*.pem" | wc -l
 

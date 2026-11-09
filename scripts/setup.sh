@@ -11,14 +11,14 @@
 #     --vault-host  <pvm2-fqdn>     \
 #     --aix-host    <pvm3-fqdn>     \
 #     --powersc-url https://<pvm1-fqdn> \
-#     --ssh-key     /home/cecuser/.ssh/techzone-key.pem
+#     --ssh-key     ~/.ssh/techzone-key.pem
 #
 # Or set environment variables and run without flags:
 #
 #   export VAULT_HOST=p1294-pvm2.p1294.cecc.ihost.com
 #   export AIX_HOST=p1294-pvm3.p1294.cecc.ihost.com
 #   export POWERSC_URL=https://p1294-pvm1.p1294.cecc.ihost.com
-#   export SSH_KEY=/home/cecuser/.ssh/techzone-key.pem
+#   export SSH_KEY=~/.ssh/techzone-key.pem
 #   bash scripts/setup.sh
 #
 # What this script does (infrastructure only):
@@ -78,9 +78,11 @@ AIX_HOST="${AIX_HOST:-}"
 POWERSC_URL="${POWERSC_URL:-}"
 POWERSC_USER="${POWERSC_USER:-powersc-admin}"
 POWERSC_PASS="${POWERSC_PASS:-}"
-SSH_KEY="${SSH_KEY:-/home/cecuser/.ssh/techzone-key.pem}"
+# TechZone assigns a different OS user per reservation — never hardcode it
+AIX_USER="${AIX_USER:-$(whoami)}"
+SSH_KEY="${SSH_KEY:-$HOME/.ssh/techzone-key.pem}"
 REPO_URL="${REPO_URL:-https://github.com/ibm-power-demos-with-bob/powersc-vault-demo.git}"
-DEMO_DIR="${DEMO_DIR:-/home/cecuser/powersc-vault-demo}"
+DEMO_DIR="${DEMO_DIR:-$HOME/powersc-vault-demo}"
 
 # ── Preflight checks ──────────────────────────────────────────────────────────
 echo -e "\n${BOLD}PowerSC + Vault Demo — Setup${NC}"
@@ -93,7 +95,7 @@ echo "────────────────────────�
 [[ ! -f "$SSH_KEY" ]]    && fail "SSH key not found at $SSH_KEY.
   The TechZone private key must be present on this host (pvm2) before running setup.
   Copy it from your laptop first:
-    scp -i <local-key> <local-key> cecuser@${VAULT_HOST}:${SSH_KEY}
+    scp -i <local-key> <local-key> <os-user>@${VAULT_HOST}:${SSH_KEY}
   Then re-run setup.sh."
 
 # Derive AIX short hostname (first component of FQDN) for PowerSC endpoint reference
@@ -169,6 +171,9 @@ step "Step 3: Start Vault container"
 VAULT_IMAGE="icr.io/ppc64le-oss/vault-ppc64le:v1.14.8"
 
 # Stop and remove any existing Vault container (safe on re-run)
+# On re-runs the Step 4 systemd unit may hold port 8200 — stop it first
+systemctl --user stop vault.service 2>/dev/null || true
+
 podman stop vault 2>/dev/null && info "Stopped existing vault container" || true
 podman rm   vault 2>/dev/null && info "Removed existing vault container" || true
 
@@ -198,7 +203,7 @@ mkdir -p ~/.config/systemd/user
 podman generate systemd --new --name vault > ~/.config/systemd/user/vault.service
 systemctl --user daemon-reload
 systemctl --user enable vault.service
-loginctl enable-linger cecuser 2>/dev/null || true
+loginctl enable-linger "$(whoami)" 2>/dev/null || true
 
 ok "Vault systemd user service enabled — will survive reboot"
 
@@ -286,7 +291,8 @@ step "Step 7: Install Node.js"
 # Sequence matters: enable the module stream BEFORE installing nodejs.
 # If nodejs 16 is already installed, dnf will upgrade it in the same transaction.
 
-NODE_MAJOR=$(node --version 2>/dev/null | sed 's/v//;s/\..*//')
+# '|| true': under set -e/pipefail a missing node (fresh box) would otherwise abort the script silently
+NODE_MAJOR=$(node --version 2>/dev/null | sed 's/v//;s/\..*//' || true)
 if [[ "$NODE_MAJOR" -ge 20 ]] 2>/dev/null; then
   ok "Node.js already at v$(node --version) — no upgrade needed"
 else
@@ -345,7 +351,7 @@ else
 # See ui/.env.local.example for all available options.
 
 AIX_HOST=${AIX_HOST}
-AIX_USER=cecuser
+AIX_USER=${AIX_USER}
 AIX_SSH_KEY_PATH=${SSH_KEY}
 
 VAULT_ADDR=http://127.0.0.1:8200
@@ -366,7 +372,7 @@ fi
 # ── Step 12: Copy SSH key to expected path ────────────────────────────────────
 step "Step 12: Ensure SSH key is in place"
 
-EXPECTED_KEY="/home/cecuser/.ssh/techzone-key.pem"
+EXPECTED_KEY="$HOME/.ssh/techzone-key.pem"
 if [[ "$SSH_KEY" != "$EXPECTED_KEY" && ! -f "$EXPECTED_KEY" ]]; then
   cp "$SSH_KEY" "$EXPECTED_KEY"
   chmod 600 "$EXPECTED_KEY"
@@ -413,8 +419,6 @@ fi
 # ── Step 14: Deploy 150 weak certificates to AIX ─────────────────────────────
 step "Step 14: Deploy 150 weak certificates to AIX (pvm3)"
 
-# Derive the OS user from the SSH key path owner
-AIX_USER="${AIX_USER:-cecuser}"
 SCAN_FOLDER="/home/${AIX_USER}/demo-certs"
 
 SSH_OPTS="-i ${SSH_KEY} -o StrictHostKeyChecking=no -o ConnectTimeout=15"

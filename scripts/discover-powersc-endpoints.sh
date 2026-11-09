@@ -1,7 +1,9 @@
 #!/bin/bash
 # Discover what endpoints and command names PowerSC actually knows about
-BASE="https://pvm01-731cq22k.p642.pok-systems.techzone.ibm.com/ws/powerscui"
-AUTH="powersc:(8FPU5dUC4a+P1d"
+# Per-deployment values (hosts, password) come from ui/.env.local via lib-env.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib-env.sh"
+BASE="$API_BASE"
+AUTH="powersc:${POWERSC_PASS}"
 
 echo "=== All systems known to PowerSC ==="
 for path in \

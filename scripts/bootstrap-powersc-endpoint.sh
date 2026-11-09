@@ -24,14 +24,15 @@
 
 set -e
 
-POWERSC_SERVER="${POWERSC_SERVER:-pvm01-731cq22k.p642.pok-systems.techzone.ibm.com}"
-AIX_ENDPOINT="${AIX_ENDPOINT:-pvm03-731cq22k.p642.pok-systems.techzone.ibm.com}"
-POWERSC_URL="${POWERSC_URL:-https://pvm01-731cq22k.p642.pok-systems.techzone.ibm.com}"
-POWERSC_USER="${POWERSC_USER:-powersc}"
-POWERSC_PASS="${POWERSC_PASS:-}"  # supply via env var — never hardcode
-SSH_KEY="${SSH_KEY:-/home/U5V9KZP/.ssh/id_rsa_techzone}"
-SCAN_FOLDER="${SCAN_FOLDER:-/home/U5V9KZP/demo-certs}"
-SSH_USER="${SSH_USER:-U5V9KZP}"
+# Per-deployment values (hosts, OS user, PowerSC password) come from ui/.env.local
+# via lib-env.sh; any variable exported in the environment takes precedence.
+source "$(dirname "${BASH_SOURCE[0]}")/lib-env.sh"
+
+POWERSC_SERVER="${POWERSC_SERVER:-$POWERSC_HOST}"
+AIX_ENDPOINT="${AIX_ENDPOINT:-$AIX_HOST}"
+SSH_USER="${SSH_USER:-$AIX_USER}"
+SSH_KEY="${SSH_KEY:-$(envget AIX_SSH_KEY_PATH)}"
+SSH_KEY="${SSH_KEY:-$HOME/.ssh/techzone-key.pem}"
 
 SSH_OPTS="-i $SSH_KEY -o StrictHostKeyChecking=no -o ConnectTimeout=15"
 SSH_PVM01="ssh $SSH_OPTS $SSH_USER@$POWERSC_SERVER"

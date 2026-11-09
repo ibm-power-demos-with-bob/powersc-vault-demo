@@ -85,7 +85,7 @@ export default function ChallengePage() {
           <Link href="/customer" className={styles.contextLink}>
             Open Customer Context
           </Link>{' '}
-          — the Howdens story, personas, and the JLR case study that opens the conversation.
+          — Danish Critical Infrastructure context, personas, and the JLR risk anchor that opens the conversation.
         </span>
       </Column>
 

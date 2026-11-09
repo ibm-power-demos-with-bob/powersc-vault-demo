@@ -11,7 +11,7 @@
 #   - Run on the RHEL Vault host (pvm2)
 #
 # Usage:
-#   ssh cecuser@$VAULT_HOST "VAULT_HOST=$VAULT_HOST bash -s" < vault-pki-setup.sh
+#   ssh <os-user>@$VAULT_HOST "VAULT_HOST=$VAULT_HOST bash -s" < vault-pki-setup.sh
 #
 # All Vault commands run inside the container via podman exec.
 # No Vault CLI or jq required on the host — uses curl + sed for JSON.

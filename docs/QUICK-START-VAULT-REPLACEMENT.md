@@ -23,14 +23,14 @@ From your local machine (Desktop):
 ```bash
 cd powersc-vault-demo/scripts
 scp replace-with-vault-certificates.sh cecuser@<AIX_HOST>:/home/cecuser/
-# Password: 8-P5VO+NT3UR5!g
+# Password: <password from your TechZone reservation>
 ```
 
 ## Step 3: SSH to AIX and Set Environment
 
 ```bash
 ssh cecuser@<AIX_HOST>
-# Password: 8-P5VO+NT3UR5!g
+# Password: <password from your TechZone reservation>
 
 # Set Vault environment variables
 export VAULT_ADDR="http://<VAULT_HOST>:8200"

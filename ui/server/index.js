@@ -1,5 +1,21 @@
 require('dotenv').config({ path: require('path').join(__dirname, '../.env.local') });
 
+// Global error handlers to prevent transient network/socket drops (ECONNRESET, EPIPE, ECONNABORTED)
+// from terminating the backend process on TechZone Power VMs
+const IGNORED_SOCKET_CODES = ['ECONNRESET', 'EPIPE', 'ECONNABORTED'];
+
+process.on('uncaughtException', (err) => {
+  if (err && err.code && IGNORED_SOCKET_CODES.includes(err.code)) {
+    console.warn(`[server] Suppressed transient socket error (${err.code}): ${err.message}`);
+    return;
+  }
+  console.error('[server] Uncaught exception:', err);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[server] Unhandled rejection:', reason);
+});
+
 const express = require('express');
 const http = require('http');
 const cors = require('cors');

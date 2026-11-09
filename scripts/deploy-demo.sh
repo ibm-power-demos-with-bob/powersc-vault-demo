@@ -27,10 +27,10 @@ echo -e "${GREEN}========================================${NC}"
 echo ""
 
 # Configuration
-DEMO_HOME="/home/cecuser/powersc-vault-demo"
+DEMO_HOME="${DEMO_HOME:-$HOME/powersc-vault-demo}"  # OS user differs per TechZone deployment
 AIX_HOST="${AIX_HOST:-<AIX_HOST>}"  # Set AIX_HOST env var to your pvm3 FQDN before running
-AIX_USER="cecuser"
-AIX_SCRIPTS_PATH="/home/cecuser/demo-scripts"
+AIX_USER="${AIX_USER:-$(whoami)}"  # TechZone assigns a new OS user per deployment
+AIX_SCRIPTS_PATH="${AIX_SCRIPTS_PATH:-/home/${AIX_USER}/demo-scripts}"
 
 # Step 1: Check prerequisites
 echo -e "${BLUE}Step 1: Checking prerequisites...${NC}"
@@ -235,7 +235,7 @@ cat > "$DEMO_HOME/README.md" << 'EOF'
 
 ### 1. Setup Vault PKI
 ```bash
-cd /home/cecuser/powersc-vault-demo/scripts
+cd ~/powersc-vault-demo/scripts
 export VAULT_ADDR="http://127.0.0.1:8200"
 export VAULT_TOKEN="your-vault-token"
 ./vault-pki-setup.sh
@@ -243,8 +243,8 @@ export VAULT_TOKEN="your-vault-token"
 
 ### 2. Generate Old Certificates on AIX
 ```bash
-ssh cecuser@$AIX_HOST
-cd /home/cecuser/demo-scripts
+ssh $AIX_USER@$AIX_HOST
+cd ~/demo-scripts
 sudo ./generate-old-certificates.sh
 ```
 
@@ -255,7 +255,7 @@ sudo ./generate-old-certificates.sh
 
 ### 4. Replace with Vault Certificates
 ```bash
-cd /home/cecuser/powersc-vault-demo/scripts
+cd ~/powersc-vault-demo/scripts
 export VAULT_ADDR="http://127.0.0.1:8200"
 export VAULT_TOKEN="your-vault-token"
 ./replace-with-vault-certificates.sh

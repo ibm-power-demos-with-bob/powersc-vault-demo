@@ -97,7 +97,7 @@ else
     echo -e "${RED}✗ Vault PKI needs configuration${NC}"
     echo ""
     echo "To fix, run on RHEL:"
-    echo "  cd /home/cecuser"
+    echo "  cd ~"
     echo "  ./vault-pki-setup.sh"
 fi
 echo ""

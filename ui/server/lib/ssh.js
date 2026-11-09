@@ -8,7 +8,7 @@ const path = require('path');
  *
  * @param {object} opts
  * @param {string} opts.host - Remote hostname or FQDN
- * @param {string} opts.username - SSH username (cecuser)
+ * @param {string} opts.username - SSH username (per-deployment TechZone OS user)
  * @param {string} opts.privateKeyPath - Absolute path to the .pem SSH key
  * @param {string} opts.localScript - Absolute path to the local script file
  * @param {string} opts.remoteScript - Destination path on the remote host
@@ -53,8 +53,9 @@ function runScriptOnAIX({ host, username, privateKeyPath, localScript, remoteScr
               buffer = lines.pop(); // keep incomplete last line
               lines.forEach((line) => line.trim() && onOutput?.(line));
             });
+            let errBuffer = '';
             stream.stderr.on('data', (data) => {
-              // Log stderr but don't fail — scripts write progress to stderr too
+              errBuffer += data.toString();
               console.error(`[ssh:stderr] ${data.toString().trim()}`);
             });
             stream.on('close', (code) => {
@@ -63,7 +64,8 @@ function runScriptOnAIX({ host, username, privateKeyPath, localScript, remoteScr
               if (code === 0) {
                 resolve({ success: true });
               } else {
-                reject(new Error(`Script exited with code ${code}`));
+                const detail = errBuffer.trim() || buffer.trim() || `exit code ${code}`;
+                reject(new Error(`Script exited with code ${code}: ${detail}`));
               }
             });
           });
